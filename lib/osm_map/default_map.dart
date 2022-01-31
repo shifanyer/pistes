@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +21,13 @@ class DefaultMap extends StatefulWidget {
 class _DefaultMapState extends State<DefaultMap> {
   var _polyLines = <String, Polyline>{};
   var _markers = <String, Marker>{};
+
+  Future<Uint8List> getBytesFromAsset(String path, int width) async {
+    ByteData data = await rootBundle.load(path);
+    ui.Codec codec = await ui.instantiateImageCodec(data.buffer.asUint8List(), targetWidth: width);
+    ui.FrameInfo fi = await codec.getNextFrame();
+    return (await fi.image.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
+  }
 
   Future<Map<String, dynamic>> loadResortsData() async {
     String jsonString = await rootBundle.loadString('assets/resorts.json');
@@ -78,6 +87,7 @@ class _DefaultMapState extends State<DefaultMap> {
             initialCameraPosition: _kGooglePlex,
             polylines: _polyLines.values.toSet(),
             markers: _markers.values.toSet(),
+            mapToolbarEnabled: false,
             onMapCreated: (GoogleMapController controller) {
               _googleMapController.complete(controller);
             },
@@ -86,6 +96,11 @@ class _DefaultMapState extends State<DefaultMap> {
       ),
       floatingActionButton: FloatingActionButton(onPressed: () async {
         var resorts = await loadResortsData();
+        var byteIcon = await getBytesFromAsset('assets/markers/tmp2.png', 80);
+        var byteIconChose = await getBytesFromAsset('assets/markers/tmp3.png', 80);
+        var tmpMarker = BitmapDescriptor.fromBytes(byteIcon);
+        var tmpMarkerChosen = BitmapDescriptor.fromBytes(byteIconChose);
+
         var redLake = resorts['resorts']['red lake'];
         var _pistes = redLake['pistes'];
         var _aerialways = redLake['aerialways'];
@@ -135,7 +150,24 @@ class _DefaultMapState extends State<DefaultMap> {
           _markers[firstPointKey] = Marker(
               markerId: MarkerId(firstPointKey),
               position: LatLng(double.parse(_points[firstPointKey]['lat']), double.parse(_points[firstPointKey]['lon'])),
-              icon: BitmapDescriptor.defaultMarker);
+              icon: tmpMarker,
+              anchor: const Offset(0.5, 0.5),
+            onTap: () {
+              _markers[firstPointKey] = Marker(
+                  markerId: MarkerId(firstPointKey),
+                  position: LatLng(double.parse(_points[firstPointKey]['lat']), double.parse(_points[firstPointKey]['lon'])),
+                  icon: tmpMarkerChosen,
+                  anchor: const Offset(0.5, 0.5),
+                  onTap: () {
+                    print('chosen');
+                  }
+              );
+              setState(() {
+
+              });
+            }
+          );
+
           var geoList = [
             for (var point in aerialway['points'].values) LatLng(double.parse(_points[point]['lat']), double.parse(_points[point]['lon']))
           ];

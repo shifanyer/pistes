@@ -31,3 +31,6 @@ flutter:
 
   assets:
     - assets/resorts.json
+    - assets/markers/tmp.png
+    - assets/markers/tmp2.png
+    - assets/markers/tmp3.png
