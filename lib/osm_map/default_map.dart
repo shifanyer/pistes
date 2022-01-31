@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -5,6 +6,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_osm_plugin/flutter_osm_plugin.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pistes/device_description/size_config.dart';
 
 class DefaultMap extends StatefulWidget {
@@ -15,17 +17,7 @@ class DefaultMap extends StatefulWidget {
 }
 
 class _DefaultMapState extends State<DefaultMap> {
-  MapController mapController = MapController(
-    initMapWithUserPosition: false,
-    initPosition:
-    GeoPoint(latitude: 60.53475333320823, longitude: 29.738908330678612),
-    areaLimit: BoundingBox(
-      east: 58.0,
-      north: 28.0,
-      south: 30.0,
-      west: 62.0,
-    ),
-  );
+  var polyLines = <Polyline>{};
 
   Future<Map<String, dynamic>> loadResortsData() async {
     String jsonString = await rootBundle.loadString('assets/resorts.json');
@@ -33,34 +25,23 @@ class _DefaultMapState extends State<DefaultMap> {
     return data;
   }
 
+  Completer<GoogleMapController> _googleMapController = Completer();
+
+  static final CameraPosition _kGooglePlex = CameraPosition(
+    target: LatLng(60.5366352, 29.7506576),
+    zoom: 14.4746,
+  );
+
+  static final CameraPosition _kLake = CameraPosition(
+      bearing: 192.8334901395799, target: LatLng(37.43296265331129, -122.08832357078792), tilt: 59.440717697143555, zoom: 19.151926040649414);
+
   @override
   void initState() {
-    mapController.listenerRegionIsChanging.addListener(() async {
-      var currentGeoPoint = await mapController.centerMap;
-      print('currentGeoPoint.toString(): ${currentGeoPoint.toString()}');
-    });
-    mapController.listenerMapSingleTapping.addListener(() async {
-      if (mapController.listenerMapSingleTapping.value != null) {
-        print('here: ${mapController.listenerMapSingleTapping.value}');
-        // var currentGeoPoint = await mapController.centerMap;
-
-        await mapController.addMarker(
-            mapController.listenerMapSingleTapping.value!,
-            markerIcon: const MarkerIcon(
-                icon: Icon(
-                  Icons.location_on_sharp,
-                  color: Colors.blue,
-                  size: 90,
-                )),
-            angle: pi * 0);
-      }
-    });
     super.initState();
   }
 
   @override
   void dispose() {
-    mapController.dispose();
     super.dispose();
   }
 
@@ -74,46 +55,13 @@ class _DefaultMapState extends State<DefaultMap> {
         width: SizeConfig.screenWidth,
         height: SizeConfig.screenHeight * 0.8,
         child: SafeArea(
-          child: OSMFlutter(
-            controller: mapController,
-            trackMyPosition: false,
-            initZoom: 12,
-            minZoomLevel: 2,
-            maxZoomLevel: 19,
-            stepZoom: 1.0,
-            userLocationMarker: UserLocationMaker(
-              personMarker: const MarkerIcon(
-                icon: Icon(
-                  Icons.location_history_rounded,
-                  color: Colors.red,
-                  size: 48,
-                ),
-              ),
-              directionArrowMarker: const MarkerIcon(
-                icon: Icon(
-                  Icons.double_arrow,
-                  size: 48,
-                ),
-              ),
-            ),
-            roadConfiguration: RoadConfiguration(
-              startIcon: const MarkerIcon(
-                icon: Icon(
-                  Icons.person,
-                  size: 64,
-                  color: Colors.brown,
-                ),
-              ),
-              roadColor: Colors.yellowAccent,
-            ),
-            markerOption: MarkerOption(
-                defaultMarker: const MarkerIcon(
-                  icon: Icon(
-                    Icons.person_pin_circle,
-                    color: Colors.blue,
-                    size: 56,
-                  ),
-                )),
+          child: GoogleMap(
+            mapType: MapType.hybrid,
+            initialCameraPosition: _kGooglePlex,
+            polylines: polyLines,
+            onMapCreated: (GoogleMapController controller) {
+              _googleMapController.complete(controller);
+            },
           ),
         ),
       ),
@@ -121,42 +69,67 @@ class _DefaultMapState extends State<DefaultMap> {
         var resorts = await loadResortsData();
         var redLake = resorts['resorts']['red lake'];
         var pistes = redLake['pistes'];
+        var aerialways = redLake['aerialways'];
         var points = redLake['points'];
-/*
-        for (var piste in pistes.values) {
-          // print('piste: ${piste}');
-          // print(piste['points'].values);
-          var geoList = [
-            for (var point in piste['points'].values)
-              GeoPoint(
-                  latitude: double.parse(points[point]['lat']),
-                  longitude: double.parse(points[point]['lon']))
-          ];
-          // print('geoList: ${geoList}');
-          await mapController.drawRoadManually(geoList, Colors.red, 5.0);
+
+        polyLines.clear();
+        for (var pisteKey in pistes.keys) {
+          var piste = pistes[pisteKey];
+          var geoList = [for (var point in piste['points'].values) LatLng(double.parse(points[point]['lat']), double.parse(points[point]['lon']))];
+
+          Color pisteColor = Colors.purple;
+
+          switch (piste['difficulty']) {
+            case 'novice':
+              pisteColor = Colors.green;
+              break;
+            case 'easy':
+              pisteColor = Colors.blue;
+              break;
+            case 'intermediate':
+              pisteColor = Colors.red;
+              break;
+            case 'advanced':
+              pisteColor = Colors.black;
+              break;
+            case 'expert':
+              pisteColor = Colors.yellow;
+              break;
+          }
+
+          polyLines.add(Polyline(
+              polylineId: PolylineId(pisteKey),
+              points: geoList,
+              width: 3,
+              color: pisteColor,
+              consumeTapEvents: true,
+              endCap: Cap.roundCap,
+              onTap: () {
+                print('pisteKey: ${pisteKey}');
+              }));
         }
 
- */
-        mapController.osmBaseController.drawRoadManually([
-          GeoPoint(latitude: 60.534748724055504, longitude: 29.73907391022948),
-          GeoPoint(latitude: 60.536748724055504, longitude: 29.74007391022948),
-          GeoPoint(latitude: 60.538748724055504, longitude: 29.75007391022948),
-          GeoPoint(latitude: 60.53956622736207, longitude: 29.74616447156012)
-        ], Colors.red, 5.0).then((value) => {
-          print('done')
-        });
-        // mapController.dr
-/*
-        mapController.drawRoad(
-            GeoPoint(
-                latitude: 60.534748724055504, longitude: 29.73907391022948),
-            GeoPoint(latitude: 60.53956622736207, longitude: 29.74616447156012),
-            roadType: RoadType.foot);
-*/
+        for (var aerialwayKey in aerialways.keys) {
+          var aerialway = aerialways[aerialwayKey];
+          var geoList = [
+            for (var point in aerialway['points'].values) LatLng(double.parse(points[point]['lat']), double.parse(points[point]['lon']))
+          ];
 
-      }
-        // mapController.
-      ),
+          Color aerialwayColor = Colors.black;
+
+          polyLines.add(Polyline(
+              polylineId: PolylineId(aerialwayKey),
+              points: geoList,
+              width: 2,
+              color: aerialwayColor,
+              consumeTapEvents: true,
+              onTap: () {
+                print('aerialwayKey: ${aerialwayKey}');
+              }));
+        }
+
+        setState(() {});
+      }),
     );
   }
 }
