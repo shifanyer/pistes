@@ -10,6 +10,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_osm_plugin/flutter_osm_plugin.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pistes/device_description/size_config.dart';
+import 'package:pistes/enums/marker_types.dart';
+import 'package:pistes/graph/resort_graph.dart';
+
+import '../graph/resort_point.dart';
 
 class DefaultMap extends StatefulWidget {
   const DefaultMap({Key? key}) : super(key: key);
@@ -21,19 +25,10 @@ class DefaultMap extends StatefulWidget {
 class _DefaultMapState extends State<DefaultMap> {
   var _polyLines = <String, Polyline>{};
   var _markers = <String, Marker>{};
-
-  Future<Uint8List> getBytesFromAsset(String path, int width) async {
-    ByteData data = await rootBundle.load(path);
-    ui.Codec codec = await ui.instantiateImageCodec(data.buffer.asUint8List(), targetWidth: width);
-    ui.FrameInfo fi = await codec.getNextFrame();
-    return (await fi.image.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
-  }
-
-  Future<Map<String, dynamic>> loadResortsData() async {
-    String jsonString = await rootBundle.loadString('assets/resorts.json');
-    Map<String, dynamic> data = json.decode(jsonString);
-    return data;
-  }
+  Map<MarkerType, BitmapDescriptor> customMarkers = {};
+  late ResortGraph resortGraph;
+  String? startPoint;
+  String? endPoint;
 
   Completer<GoogleMapController> _googleMapController = Completer();
 
@@ -52,12 +47,79 @@ class _DefaultMapState extends State<DefaultMap> {
     super.dispose();
   }
 
+  Future<Map<MarkerType, BitmapDescriptor>> _loadMarkers() async {
+    customMarkers[MarkerType.tmpMarker] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/tmp2.png', 80));
+    customMarkers[MarkerType.tmpMarkerChosen] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/tmp3.png', 80));
+    return customMarkers;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+      ),
+      body: FutureBuilder(
+          future: _loadMarkers(),
+          builder: (context, snapshot) {
+            return SizedBox(
+              width: SizeConfig.screenWidth,
+              height: SizeConfig.screenHeight * 0.8,
+              child: (snapshot.data != null)
+                  ? SafeArea(
+                      child: GoogleMap(
+                        mapType: MapType.hybrid,
+                        initialCameraPosition: _kGooglePlex,
+                        polylines: _polyLines.values.toSet(),
+                        markers: _markers.values.toSet(),
+                        mapToolbarEnabled: false,
+                        onMapCreated: (GoogleMapController controller) {
+                          _googleMapController.complete(controller);
+                        },
+                      ),
+                    )
+                  : const CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+            );
+          }),
+      floatingActionButton: FloatingActionButton(onPressed: () async {
+        var resorts = await loadResortsData();
+        resortGraph = ResortGraph({});
+        var redLake = resorts['resorts']['red lake'];
+        var _pistes = redLake['pistes'];
+        var _aerialways = redLake['aerialways'];
+        var _points = redLake['points'];
+
+        _polyLines.clear();
+
+        _createPistes(_pistes, _points);
+        _createAerialways(_aerialways, _points);
+
+        resortGraph.display();
+        setState(() {});
+      }),
+    );
+  }
+
+  Future<Uint8List> getBytesFromAsset(String path, int width) async {
+    ByteData data = await rootBundle.load(path);
+    ui.Codec codec = await ui.instantiateImageCodec(data.buffer.asUint8List(), targetWidth: width);
+    ui.FrameInfo fi = await codec.getNextFrame();
+    return (await fi.image.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
+  }
+
+  Future<Map<String, dynamic>> loadResortsData() async {
+    String jsonString = await rootBundle.loadString('assets/resorts.json');
+    Map<String, dynamic> data = json.decode(jsonString);
+    return data;
+  }
+
   void _pisteTap(Polyline line) {
     int lineWidth = 3;
     if (line.width == 3) {
       lineWidth = 7;
     }
-    print('${line.polylineId.value}, ${line.width}');
     _polyLines[line.polylineId.value] = Polyline(
         polylineId: PolylineId(line.polylineId.value),
         points: line.points,
@@ -72,122 +134,133 @@ class _DefaultMapState extends State<DefaultMap> {
     setState(() {});
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-      ),
-      body: Container(
-        width: SizeConfig.screenWidth,
-        height: SizeConfig.screenHeight * 0.8,
-        child: SafeArea(
-          child: GoogleMap(
-            mapType: MapType.hybrid,
-            initialCameraPosition: _kGooglePlex,
-            polylines: _polyLines.values.toSet(),
-            markers: _markers.values.toSet(),
-            mapToolbarEnabled: false,
-            onMapCreated: (GoogleMapController controller) {
-              _googleMapController.complete(controller);
-            },
-          ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(onPressed: () async {
-        var resorts = await loadResortsData();
-        var byteIcon = await getBytesFromAsset('assets/markers/tmp2.png', 80);
-        var byteIconChose = await getBytesFromAsset('assets/markers/tmp3.png', 80);
-        var tmpMarker = BitmapDescriptor.fromBytes(byteIcon);
-        var tmpMarkerChosen = BitmapDescriptor.fromBytes(byteIconChose);
+  void _createPistes(Map pistes, Map points) {
+    for (var pisteKey in pistes.keys) {
+      var piste = pistes[pisteKey];
+      var geoList = [for (var point in piste['points'].values) LatLng(double.parse(points[point]['lat']), double.parse(points[point]['lon']))];
 
-        var redLake = resorts['resorts']['red lake'];
-        var _pistes = redLake['pistes'];
-        var _aerialways = redLake['aerialways'];
-        var _points = redLake['points'];
+      Color pisteColor = Colors.purple;
 
-        _polyLines.clear();
-        for (var pisteKey in _pistes.keys) {
-          var piste = _pistes[pisteKey];
-          var geoList = [for (var point in piste['points'].values) LatLng(double.parse(_points[point]['lat']), double.parse(_points[point]['lon']))];
+      switch (piste['difficulty']) {
+        case 'novice':
+          pisteColor = Colors.green;
+          break;
+        case 'easy':
+          pisteColor = Colors.blue;
+          break;
+        case 'intermediate':
+          pisteColor = Colors.red;
+          break;
+        case 'advanced':
+          pisteColor = Colors.black;
+          break;
+        case 'expert':
+          pisteColor = Colors.yellow;
+          break;
+      }
 
-          Color pisteColor = Colors.purple;
+      _polyLines[pisteKey] = (Polyline(
+          polylineId: PolylineId(pisteKey),
+          points: geoList,
+          width: 3,
+          color: pisteColor,
+          consumeTapEvents: true,
+          onTap: () {
+            _pisteTap(_polyLines[pisteKey]!);
+          }));
 
-          switch (piste['difficulty']) {
-            case 'novice':
-              pisteColor = Colors.green;
-              break;
-            case 'easy':
-              pisteColor = Colors.blue;
-              break;
-            case 'intermediate':
-              pisteColor = Colors.red;
-              break;
-            case 'advanced':
-              pisteColor = Colors.black;
-              break;
-            case 'expert':
-              pisteColor = Colors.yellow;
-              break;
-          }
+      for (var i = 0; i < geoList.length - 1; i++) {
+        resortGraph.addConnection(ResortPoint(int.parse((piste['points'].keys.toList())[i]), geoList[i]),
+            ResortPoint(int.parse((piste['points'].keys.toList())[i + 1]), geoList[i + 1]));
+      }
+    }
+  }
 
-          _polyLines[pisteKey] = (Polyline(
-              polylineId: PolylineId(pisteKey),
-              points: geoList,
-              width: 3,
-              color: pisteColor,
-              consumeTapEvents: true,
-              endCap: Cap.roundCap,
-              startCap: Cap.roundCap,
-              onTap: () {
-                _pisteTap(_polyLines[pisteKey]!);
-              }));
-        }
+  void _createAerialways(Map aerialways, Map points) {
+    var startPoints = [];
+    var endPoints = [];
 
-        for (var aerialwayKey in _aerialways.keys) {
-          var aerialway = _aerialways[aerialwayKey];
-          var firstPointKey = aerialway['points'].values.first;
-          _markers[firstPointKey] = Marker(
-              markerId: MarkerId(firstPointKey),
-              position: LatLng(double.parse(_points[firstPointKey]['lat']), double.parse(_points[firstPointKey]['lon'])),
-              icon: tmpMarker,
-              anchor: const Offset(0.5, 0.5),
-            onTap: () {
-              _markers[firstPointKey] = Marker(
-                  markerId: MarkerId(firstPointKey),
-                  position: LatLng(double.parse(_points[firstPointKey]['lat']), double.parse(_points[firstPointKey]['lon'])),
-                  icon: tmpMarkerChosen,
-                  anchor: const Offset(0.5, 0.5),
-                  onTap: () {
-                    print('chosen');
-                  }
-              );
-              setState(() {
+    for (var aerialwayKey in aerialways.keys) {
+      var aerialway = aerialways[aerialwayKey];
+      var firstPointKey = aerialway['points'].values.first;
+      var lastPointKey = aerialway['points'].values.last;
+      startPoints.add(firstPointKey);
+      endPoints.add(lastPointKey);
 
-              });
+      var geoList = [for (var point in aerialway['points'].values) LatLng(double.parse(points[point]['lat']), double.parse(points[point]['lon']))];
+
+      Color aerialwayColor = Colors.black;
+
+      _polyLines[aerialwayKey] = (Polyline(
+          polylineId: PolylineId(aerialwayKey),
+          points: geoList,
+          width: 4,
+          color: aerialwayColor,
+          patterns: [PatternItem.dash(10), PatternItem.gap(10)],
+          consumeTapEvents: true,
+          onTap: () {
+            print('aerialwayKey: ${aerialwayKey}');
+          }));
+
+      for (var i = 0; i < geoList.length - 1; i++) {
+        resortGraph.addConnection(ResortPoint(int.parse((aerialway['points'].keys.toList())[i]), geoList[i]),
+            ResortPoint(int.parse((aerialway['points'].keys.toList())[i + 1]), geoList[i + 1]));
+      }
+    }
+
+    _createMarkers(startPoints, points);
+    _createMarkers(endPoints, points);
+  }
+
+  void _createMarkers(List pointsKeyList, Map points) {
+    var tmpMarker = customMarkers[MarkerType.tmpMarker]!;
+    var tmpMarkerChosen = customMarkers[MarkerType.tmpMarkerChosen]!;
+    for (var pointKey in pointsKeyList) {
+      _markers[pointKey] = Marker(
+          markerId: MarkerId(pointKey),
+          position: LatLng(double.parse(points[pointKey]['lat']), double.parse(points[pointKey]['lon'])),
+          icon: tmpMarker,
+          anchor: const Offset(0.5, 0.5),
+          onTap: () {
+            if (startPoint == null) {
+              startPoint = pointKey;
+            } else {
+              endPoint = pointKey;
+              print('startPoint: ${startPoint}, endPoint: ${endPoint}');
             }
-          );
+            _markerTap(_markers[pointKey]!);
 
-          var geoList = [
-            for (var point in aerialway['points'].values) LatLng(double.parse(_points[point]['lat']), double.parse(_points[point]['lon']))
-          ];
+            if ((startPoint != null) && (endPoint != null)) {
+              resortGraph.findRoute(int.parse(startPoint!), int.parse(endPoint!));
+            }
+            setState(() {});
+          });
+    }
+  }
 
-          Color aerialwayColor = Colors.black;
-
-          _polyLines[aerialwayKey] = (Polyline(
-              polylineId: PolylineId(aerialwayKey),
-              points: geoList,
-              width: 4,
-              color: aerialwayColor,
-              patterns: [PatternItem.dash(10), PatternItem.gap(10)],
-              consumeTapEvents: true,
-              onTap: () {
-                print('aerialwayKey: ${aerialwayKey}');
-              }));
-        }
-
-        setState(() {});
-      }),
-    );
+  void _markerTap(Marker marker) {
+    var markerType = customMarkers[MarkerType.tmpMarker];
+    // if (_markers[marker.markerId.value]!.icon == customMarkers[MarkerType.tmpMarker]) {
+    if ((marker.markerId.value == startPoint) || (marker.markerId.value == endPoint)) {
+      markerType = customMarkers[MarkerType.tmpMarkerChosen];
+    }
+    _markers[marker.markerId.value] = Marker(
+        markerId: MarkerId(marker.markerId.value),
+        position: LatLng(marker.position.latitude, marker.position.longitude),
+        icon: markerType!,
+        anchor: const Offset(0.5, 0.5),
+        onTap: () {
+          if (startPoint == null) {
+            startPoint = marker.markerId.value;
+          } else {
+            endPoint = marker.markerId.value;
+            print('startPoint: ${startPoint}, endPoint: ${endPoint}');
+          }
+          _markerTap(_markers[marker.markerId.value]!);
+          if ((startPoint != null) && (endPoint != null)) {
+            resortGraph.findRoute(int.parse(startPoint!), int.parse(endPoint!));
+          }
+          setState(() {});
+        });
   }
 }

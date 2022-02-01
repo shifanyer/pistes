@@ -1,0 +1,1 @@
+enum MarkerType {tmpMarker, tmpMarkerChosen}
