@@ -30,6 +30,7 @@ class _DefaultMapState extends State<DefaultMap> {
   late ResortGraph resortGraph;
   String? startPoint;
   String? endPoint;
+  double sliderDifficulty = 2.0;
 
   Completer<GoogleMapController> _googleMapController = Completer();
 
@@ -63,25 +64,51 @@ class _DefaultMapState extends State<DefaultMap> {
       body: FutureBuilder(
           future: _loadMarkers(),
           builder: (context, snapshot) {
-            return SizedBox(
-              width: SizeConfig.screenWidth,
-              height: SizeConfig.screenHeight * 0.8,
-              child: (snapshot.data != null)
-                  ? SafeArea(
-                      child: GoogleMap(
-                        mapType: MapType.hybrid,
-                        initialCameraPosition: _kGooglePlex,
-                        polylines: _polyLines.values.toSet(),
-                        markers: _markers.values.toSet(),
-                        mapToolbarEnabled: false,
-                        onMapCreated: (GoogleMapController controller) {
-                          _googleMapController.complete(controller);
+            return Column(
+              children: [
+                SizedBox(
+                  width: SizeConfig.screenWidth,
+                  height: SizeConfig.screenHeight * 0.8,
+                  child: (snapshot.data != null)
+                      ? SafeArea(
+                          child: GoogleMap(
+                            mapType: MapType.hybrid,
+                            initialCameraPosition: _kGooglePlex,
+                            polylines: _polyLines.values.toSet(),
+                            markers: _markers.values.toSet(),
+                            mapToolbarEnabled: false,
+                            onMapCreated: (GoogleMapController controller) {
+                              _googleMapController.complete(controller);
+                            },
+                          ),
+                        )
+                      : const CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                ),
+                Flexible(
+                  child: Container(
+                    width: SizeConfig.screenWidth,
+                    height: SizeConfig.screenHeight * 0.2,
+                    color: Colors.white,
+                    child: Center(
+                      child: Slider(
+                        value: sliderDifficulty,
+                        onChanged: (double value) {
+                          setState(() {
+                            sliderDifficulty = value;
+                            _drawPath(startPoint, endPoint, sliderDifficulty.floor());
+                          });
                         },
+                        divisions: 6,
+                        label: _difficultyByNum(sliderDifficulty.round()),
+                        min: 0,
+                        max: 6,
                       ),
-                    )
-                  : const CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
+                  ),
+                )
+              ],
             );
           }),
       floatingActionButton: FloatingActionButton(onPressed: () async {
@@ -98,7 +125,10 @@ class _DefaultMapState extends State<DefaultMap> {
         _createAerialways(_aerialways, _points);
 
         setState(() {});
-      }),
+      },
+        child: Text('Build'),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
     );
   }
 
@@ -179,7 +209,7 @@ class _DefaultMapState extends State<DefaultMap> {
           points: geoList,
           width: 3,
           color: pisteColor,
-          consumeTapEvents: true,
+          consumeTapEvents: false,
           onTap: () {
             _pisteTap(_polyLines[pisteKey]!);
           }));
@@ -216,10 +246,8 @@ class _DefaultMapState extends State<DefaultMap> {
           width: 4,
           color: aerialwayColor,
           patterns: [PatternItem.dash(10), PatternItem.gap(10)],
-          consumeTapEvents: true,
-          onTap: () {
-            print('aerialwayKey: ${aerialwayKey}');
-          }));
+          consumeTapEvents: false,
+          onTap: () {}));
 
       for (var i = 0; i < geoList.length - 1; i++) {
         var fromPoint = _createResortPoint(aerialway['points'].keys.toList()[i], geoList[i], isEdge: (i == 0) || (i == geoList.length - 1));
@@ -265,14 +293,14 @@ class _DefaultMapState extends State<DefaultMap> {
     if (startPoint == null) {
       startPoint = marker.markerId.value;
       _selectMarker(marker.markerId.value);
-      _drawPath(startPoint, endPoint);
+      _drawPath(startPoint, endPoint, sliderDifficulty.floor());
       setState(() {});
       return;
     }
     if (endPoint == null) {
       endPoint = marker.markerId.value;
       _selectMarker(marker.markerId.value);
-      _drawPath(startPoint, endPoint);
+      _drawPath(startPoint, endPoint, sliderDifficulty.floor());
       setState(() {});
       return;
     }
@@ -280,7 +308,7 @@ class _DefaultMapState extends State<DefaultMap> {
       _deselectMarker(endPoint!);
       _selectMarker(marker.markerId.value);
       endPoint = marker.markerId.value;
-      _drawPath(startPoint, endPoint);
+      _drawPath(startPoint, endPoint, sliderDifficulty.floor());
       setState(() {});
       return;
     }
@@ -328,9 +356,9 @@ class _DefaultMapState extends State<DefaultMap> {
     return newPoint;
   }
 
-  void _drawPath(String? startPoint, String? endPoint) {
+  void _drawPath(String? startPoint, String? endPoint, int difficulty) {
     if ((startPoint != null) && (endPoint != null)) {
-      var path = resortGraph.findRoute(int.parse(startPoint), int.parse(endPoint));
+      var path = resortGraph.findRoute(int.parse(startPoint), int.parse(endPoint), difficulty: difficulty);
       _polyLines['selected path'] = Polyline(
         polylineId: PolylineId('selected path'),
         points: path.map((e) {
@@ -350,4 +378,33 @@ class _DefaultMapState extends State<DefaultMap> {
       setState(() {});
     }
   }
+
+  String _difficultyByNum(int value ) {
+    String res = 'extra hard';
+    switch (value) {
+      case 0:
+        res = 'pedestrian';
+        break;
+      case 1:
+        res = 'novice';
+        break;
+      case 2:
+        res = 'easy';
+        break;
+      case 3:
+        res = 'intermediate';
+        break;
+      case 4:
+        res = 'advanced';
+        break;
+      case 5:
+        res = 'expert';
+        break;
+      case 6:
+        res = 'god';
+        break;
+    }
+    return res;
+  }
+
 }
