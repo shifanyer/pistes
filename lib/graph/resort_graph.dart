@@ -27,7 +27,6 @@ class ResortGraph {
     while (q.isNotEmpty) {
       int vertex = q.first;
       q.removeFirst();
-      // print('vertex: ${vertex}');
       for (int i = 0; i < (connections[vertex]?.length ?? 0); i++) {
         int nextVertex = connections[vertex]![i].pointId;
         if ((isUsed[nextVertex] == null) || (isUsed[nextVertex] == false)) {
@@ -39,18 +38,16 @@ class ResortGraph {
     }
 
     if ((isUsed[endId] == null) || (isUsed[endId] == false)) {
-      print('no way');
       return [];
     } else {
       var path = <int>[];
       for (var vertex = endId; vertex != -1; vertex = parent[vertex]!) {
         path.add(vertex);
       }
-      print(path);
       return path;
     }
   }
-  
+
   void display() {
     print(connections);
   }

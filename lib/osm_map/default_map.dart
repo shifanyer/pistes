@@ -58,7 +58,7 @@ class _DefaultMapState extends State<DefaultMap> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.blue,
       ),
       body: FutureBuilder(
           future: _loadMarkers(),
@@ -97,11 +97,6 @@ class _DefaultMapState extends State<DefaultMap> {
         _createPistes(_pistes, _points);
         _createAerialways(_aerialways, _points);
 
-        var point1 = ResortPoint(2758408985, LatLng(double.parse(_points['2758408985']['lat']), double.parse(_points['2758408985']['lon'])));
-        var point2 = ResortPoint(2758408987, LatLng(double.parse(_points['2758408987']['lat']), double.parse(_points['2758408987']['lon'])));
-        print('maxDist: ${ResortPoint.calculateDistance(point1, point2)}');
-
-        resortGraph.display();
         setState(() {});
       }),
     );
@@ -142,8 +137,8 @@ class _DefaultMapState extends State<DefaultMap> {
   }
 
   void _createPistes(Map pistes, Map points) {
-    var startPoints = [];
-    var endPoints = [];
+    var startPoints = <String>[];
+    var endPoints = <String>[];
     for (var pisteKey in pistes.keys) {
       var piste = pistes[pisteKey];
       var geoList = [for (var point in piste['points'].values) LatLng(double.parse(points[point]['lat']), double.parse(points[point]['lon']))];
@@ -195,8 +190,8 @@ class _DefaultMapState extends State<DefaultMap> {
   }
 
   void _createAerialways(Map aerialways, Map points) {
-    var startPoints = [];
-    var endPoints = [];
+    var startPoints = <String>[];
+    var endPoints = <String>[];
 
     for (var aerialwayKey in aerialways.keys) {
       var aerialway = aerialways[aerialwayKey];
@@ -232,9 +227,8 @@ class _DefaultMapState extends State<DefaultMap> {
     _createMarkers(endPoints, points);
   }
 
-  void _createMarkers(List pointsKeyList, Map points) {
+  void _createMarkers(List<String> pointsKeyList, Map points) {
     var tmpMarker = customMarkers[MarkerType.tmpMarker]!;
-    var tmpMarkerChosen = customMarkers[MarkerType.tmpMarkerChosen]!;
     for (var pointKey in pointsKeyList) {
       _markers[pointKey] = Marker(
           markerId: MarkerId(pointKey),
@@ -242,45 +236,69 @@ class _DefaultMapState extends State<DefaultMap> {
           icon: tmpMarker,
           anchor: const Offset(0.5, 0.5),
           onTap: () {
-            if (startPoint == null) {
-              startPoint = pointKey;
-            } else {
-              endPoint = pointKey;
-              print('startPoint: ${startPoint}, endPoint: ${endPoint}');
-            }
             _markerTap(_markers[pointKey]!);
-
-            if ((startPoint != null) && (endPoint != null)) {
-              _drawPath(startPoint!, endPoint!);
-            }
-            setState(() {});
           });
     }
   }
 
   void _markerTap(Marker marker) {
-    var markerType = customMarkers[MarkerType.tmpMarker];
-    // if (_markers[marker.markerId.value]!.icon == customMarkers[MarkerType.tmpMarker]) {
-    if ((marker.markerId.value == startPoint) || (marker.markerId.value == endPoint)) {
-      markerType = customMarkers[MarkerType.tmpMarkerChosen];
+    if (marker.markerId.value == startPoint) {
+      startPoint = null;
+      _deselectMarker(marker.markerId.value);
+      _erasePath();
+      setState(() {});
+      return;
     }
-    _markers[marker.markerId.value] = Marker(
-        markerId: MarkerId(marker.markerId.value),
-        position: LatLng(marker.position.latitude, marker.position.longitude),
-        icon: markerType!,
+    if (marker.markerId.value == endPoint) {
+      endPoint = null;
+      _deselectMarker(marker.markerId.value);
+      _erasePath();
+      setState(() {});
+      return;
+    }
+    if (startPoint == null) {
+      startPoint = marker.markerId.value;
+      _selectMarker(marker.markerId.value);
+      _drawPath(startPoint, endPoint);
+      setState(() {});
+      return;
+    }
+    if (endPoint == null) {
+      endPoint = marker.markerId.value;
+      _selectMarker(marker.markerId.value);
+      _drawPath(startPoint, endPoint);
+      setState(() {});
+      return;
+    }
+    if ((startPoint != null) && (endPoint != null)) {
+      _deselectMarker(endPoint!);
+      _selectMarker(marker.markerId.value);
+      endPoint = marker.markerId.value;
+      _drawPath(startPoint, endPoint);
+      setState(() {});
+      return;
+    }
+  }
+
+  void _selectMarker(String markerId) {
+    _markers[markerId] = Marker(
+        markerId: _markers[markerId]!.markerId,
+        position: _markers[markerId]!.position,
+        icon: customMarkers[MarkerType.tmpMarkerChosen]!,
         anchor: const Offset(0.5, 0.5),
         onTap: () {
-          if (startPoint == null) {
-            startPoint = marker.markerId.value;
-          } else {
-            endPoint = marker.markerId.value;
-            print('startPoint: ${startPoint}, endPoint: ${endPoint}');
-          }
-          _markerTap(_markers[marker.markerId.value]!);
-          if ((startPoint != null) && (endPoint != null)) {
-            _drawPath(startPoint!, endPoint!);
-          }
-          setState(() {});
+          _markerTap(_markers[markerId]!);
+        });
+  }
+
+  void _deselectMarker(String markerId) {
+    _markers[markerId] = Marker(
+        markerId: _markers[markerId]!.markerId,
+        position: _markers[markerId]!.position,
+        icon: customMarkers[MarkerType.tmpMarker]!,
+        anchor: const Offset(0.5, 0.5),
+        onTap: () {
+          _markerTap(_markers[markerId]!);
         });
   }
 
@@ -304,18 +322,26 @@ class _DefaultMapState extends State<DefaultMap> {
     return newPoint;
   }
 
-  void _drawPath(String startPoint, String endPoint) {
-    var path = resortGraph.findRoute(int.parse(startPoint), int.parse(endPoint));
-    _polyLines['selected path'] = Polyline(
-      polylineId: PolylineId('selected path'),
-      points: path.map((e) {
-        print('e: ${e}');
-        return _resortPoints[e]!.position;
-      }).toList(),
-      width: 12,
-      color: Colors.orange.withOpacity(0.4),
-      consumeTapEvents: false,
-    );
-    setState(() {});
+  void _drawPath(String? startPoint, String? endPoint) {
+    if ((startPoint != null) && (endPoint != null)) {
+      var path = resortGraph.findRoute(int.parse(startPoint), int.parse(endPoint));
+      _polyLines['selected path'] = Polyline(
+        polylineId: PolylineId('selected path'),
+        points: path.map((e) {
+          return _resortPoints[e]!.position;
+        }).toList(),
+        width: 12,
+        color: Colors.orange.withOpacity(0.4),
+        consumeTapEvents: false,
+      );
+      setState(() {});
+    }
+  }
+
+  void _erasePath() {
+    if (_polyLines['selected path'] != null) {
+      _polyLines.remove('selected path');
+      setState(() {});
+    }
   }
 }
