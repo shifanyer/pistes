@@ -25,6 +25,7 @@ class DefaultMap extends StatefulWidget {
 class _DefaultMapState extends State<DefaultMap> {
   var _polyLines = <String, Polyline>{};
   var _markers = <String, Marker>{};
+  var _resortPoints = <int, ResortPoint>{};
   Map<MarkerType, BitmapDescriptor> customMarkers = {};
   late ResortGraph resortGraph;
   String? startPoint;
@@ -96,6 +97,10 @@ class _DefaultMapState extends State<DefaultMap> {
         _createPistes(_pistes, _points);
         _createAerialways(_aerialways, _points);
 
+        var point1 = ResortPoint(2758408985, LatLng(double.parse(_points['2758408985']['lat']), double.parse(_points['2758408985']['lon'])));
+        var point2 = ResortPoint(2758408987, LatLng(double.parse(_points['2758408987']['lat']), double.parse(_points['2758408987']['lon'])));
+        print('maxDist: ${ResortPoint.calculateDistance(point1, point2)}');
+
         resortGraph.display();
         setState(() {});
       }),
@@ -116,15 +121,17 @@ class _DefaultMapState extends State<DefaultMap> {
   }
 
   void _pisteTap(Polyline line) {
-    int lineWidth = 3;
-    if (line.width == 3) {
-      lineWidth = 7;
+    int lineWidth = 0;
+
+    if ((_polyLines[line.polylineId.value + 'selected'] == null) || (_polyLines[line.polylineId.value + 'selected']!.width == 0)) {
+      lineWidth = 12;
     }
-    _polyLines[line.polylineId.value] = Polyline(
-        polylineId: PolylineId(line.polylineId.value),
+
+    _polyLines[line.polylineId.value + 'selected'] = Polyline(
+        polylineId: PolylineId(line.polylineId.value + 'selected'),
         points: line.points,
         width: lineWidth,
-        color: line.color,
+        color: Colors.orange.withOpacity(0.4),
         consumeTapEvents: true,
         endCap: Cap.roundCap,
         startCap: Cap.roundCap,
@@ -135,9 +142,16 @@ class _DefaultMapState extends State<DefaultMap> {
   }
 
   void _createPistes(Map pistes, Map points) {
+    var startPoints = [];
+    var endPoints = [];
     for (var pisteKey in pistes.keys) {
       var piste = pistes[pisteKey];
       var geoList = [for (var point in piste['points'].values) LatLng(double.parse(points[point]['lat']), double.parse(points[point]['lon']))];
+
+      var firstPointKey = piste['points'].values.first;
+      var lastPointKey = piste['points'].values.last;
+      startPoints.add(firstPointKey);
+      endPoints.add(lastPointKey);
 
       Color pisteColor = Colors.purple;
 
@@ -170,10 +184,14 @@ class _DefaultMapState extends State<DefaultMap> {
           }));
 
       for (var i = 0; i < geoList.length - 1; i++) {
-        resortGraph.addConnection(ResortPoint(int.parse((piste['points'].keys.toList())[i]), geoList[i]),
-            ResortPoint(int.parse((piste['points'].keys.toList())[i + 1]), geoList[i + 1]));
+        var fromPoint = _createResortPoint(piste['points'].keys.toList()[i], geoList[i], isEdge: (i == 0) || (i == geoList.length - 1));
+        var toPoint = _createResortPoint(piste['points'].keys.toList()[i + 1], geoList[i + 1], isEdge: (i + 1 == 0) || (i + 1 == geoList.length - 1));
+        resortGraph.addConnection(fromPoint, toPoint);
       }
     }
+
+    _createMarkers(startPoints, points);
+    _createMarkers(endPoints, points);
   }
 
   void _createAerialways(Map aerialways, Map points) {
@@ -203,8 +221,10 @@ class _DefaultMapState extends State<DefaultMap> {
           }));
 
       for (var i = 0; i < geoList.length - 1; i++) {
-        resortGraph.addConnection(ResortPoint(int.parse((aerialway['points'].keys.toList())[i]), geoList[i]),
-            ResortPoint(int.parse((aerialway['points'].keys.toList())[i + 1]), geoList[i + 1]));
+        var fromPoint = _createResortPoint(aerialway['points'].keys.toList()[i], geoList[i], isEdge: (i == 0) || (i == geoList.length - 1));
+        var toPoint =
+            _createResortPoint(aerialway['points'].keys.toList()[i + 1], geoList[i + 1], isEdge: (i + 1 == 0) || (i + 1 == geoList.length - 1));
+        resortGraph.addConnection(fromPoint, toPoint);
       }
     }
 
@@ -231,7 +251,7 @@ class _DefaultMapState extends State<DefaultMap> {
             _markerTap(_markers[pointKey]!);
 
             if ((startPoint != null) && (endPoint != null)) {
-              resortGraph.findRoute(int.parse(startPoint!), int.parse(endPoint!));
+              _drawPath(startPoint!, endPoint!);
             }
             setState(() {});
           });
@@ -258,9 +278,44 @@ class _DefaultMapState extends State<DefaultMap> {
           }
           _markerTap(_markers[marker.markerId.value]!);
           if ((startPoint != null) && (endPoint != null)) {
-            resortGraph.findRoute(int.parse(startPoint!), int.parse(endPoint!));
+            _drawPath(startPoint!, endPoint!);
           }
           setState(() {});
         });
+  }
+
+  ResortPoint _createResortPoint(String pointId, LatLng point, {bool isEdge = false}) {
+    var newPoint = ResortPoint(int.parse(pointId), point, isEdge: isEdge);
+
+    _resortPoints[int.parse(pointId)] = newPoint;
+
+    if (newPoint.isEdge) {
+      for (int i = 0; i < _resortPoints.values.length; i++) {
+        var resortPoint = _resortPoints.values.toList()[i];
+        if (resortPoint.isEdge) {
+          if (ResortPoint.calculateDistance(resortPoint, newPoint) <= 55.0) {
+            resortGraph.addConnection(resortPoint, newPoint);
+            resortGraph.addConnection(newPoint, resortPoint);
+          }
+        }
+      }
+    }
+
+    return newPoint;
+  }
+
+  void _drawPath(String startPoint, String endPoint) {
+    var path = resortGraph.findRoute(int.parse(startPoint), int.parse(endPoint));
+    _polyLines['selected path'] = Polyline(
+      polylineId: PolylineId('selected path'),
+      points: path.map((e) {
+        print('e: ${e}');
+        return _resortPoints[e]!.position;
+      }).toList(),
+      width: 12,
+      color: Colors.orange.withOpacity(0.4),
+      consumeTapEvents: false,
+    );
+    setState(() {});
   }
 }

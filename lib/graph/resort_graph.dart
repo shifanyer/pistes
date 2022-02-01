@@ -16,7 +16,7 @@ class ResortGraph {
     }
   }
 
-  void findRoute(int startId, int endId) {
+  List findRoute(int startId, int endId) {
     var q = Queue<int>();
     q.add(startId);
     Map<int, bool> isUsed = {};
@@ -27,7 +27,7 @@ class ResortGraph {
     while (q.isNotEmpty) {
       int vertex = q.first;
       q.removeFirst();
-      print('vertex: ${vertex}');
+      // print('vertex: ${vertex}');
       for (int i = 0; i < (connections[vertex]?.length ?? 0); i++) {
         int nextVertex = connections[vertex]![i].pointId;
         if ((isUsed[nextVertex] == null) || (isUsed[nextVertex] == false)) {
@@ -40,18 +40,17 @@ class ResortGraph {
 
     if ((isUsed[endId] == null) || (isUsed[endId] == false)) {
       print('no way');
+      return [];
     } else {
       var path = <int>[];
       for (var vertex = endId; vertex != -1; vertex = parent[vertex]!) {
         path.add(vertex);
       }
-
-      for (var vert in path) {
-        print(vert);
-      }
+      print(path);
+      return path;
     }
   }
-
+  
   void display() {
     print(connections);
   }
