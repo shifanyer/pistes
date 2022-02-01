@@ -148,22 +148,28 @@ class _DefaultMapState extends State<DefaultMap> {
       startPoints.add(firstPointKey);
       endPoints.add(lastPointKey);
 
+      int difficulty = 6;
       Color pisteColor = Colors.purple;
 
       switch (piste['difficulty']) {
         case 'novice':
+          difficulty = 1;
           pisteColor = Colors.green;
           break;
         case 'easy':
+          difficulty = 2;
           pisteColor = Colors.blue;
           break;
         case 'intermediate':
+          difficulty = 3;
           pisteColor = Colors.red;
           break;
         case 'advanced':
+          difficulty = 4;
           pisteColor = Colors.black;
           break;
         case 'expert':
+          difficulty = 5;
           pisteColor = Colors.yellow;
           break;
       }
@@ -181,7 +187,7 @@ class _DefaultMapState extends State<DefaultMap> {
       for (var i = 0; i < geoList.length - 1; i++) {
         var fromPoint = _createResortPoint(piste['points'].keys.toList()[i], geoList[i], isEdge: (i == 0) || (i == geoList.length - 1));
         var toPoint = _createResortPoint(piste['points'].keys.toList()[i + 1], geoList[i + 1], isEdge: (i + 1 == 0) || (i + 1 == geoList.length - 1));
-        resortGraph.addConnection(fromPoint, toPoint);
+        resortGraph.addConnection(fromPoint, toPoint, difficulty: difficulty);
       }
     }
 
