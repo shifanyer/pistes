@@ -4,10 +4,19 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pistes/graph/resort_point.dart';
 
 class ResortGraph {
-  Map<int, List<ResortPoint>> _connections;
+  Map<int, List<ResortPoint>> _connections = {};
   Map<int, List<int>> _connectionDifficulty = {};
+  int? startPointId;
+  int? endPointId;
+  int lastDifficulty = 2;
 
-  ResortGraph(this._connections);
+  ResortGraph._privateConstructor();
+
+  static final ResortGraph _instance = ResortGraph._privateConstructor();
+
+  factory ResortGraph() {
+    return _instance;
+  }
 
   void addConnection(ResortPoint startPoint, ResortPoint endPoint, {int difficulty = 0}) {
     if (_connections[startPoint.pointId] == null) {
@@ -19,7 +28,13 @@ class ResortGraph {
     }
   }
 
-  List findRoute(int startId, int endId, {int difficulty = 8}) {
+  List findRoute() {
+    if ((startPointId == null) || (endPointId == null)){
+      return [];
+    }
+
+    var startId = startPointId!;
+    var endId = endPointId!;
     var q = Queue<int>();
     q.add(startId);
     Map<int, bool> isUsed = {};
@@ -32,7 +47,7 @@ class ResortGraph {
       q.removeFirst();
       for (int i = 0; i < (_connections[vertex]?.length ?? 0); i++) {
         int nextVertex = _connections[vertex]![i].pointId;
-        if (((isUsed[nextVertex] == null) || (isUsed[nextVertex] == false)) && (_connectionDifficulty[vertex]![i] <= difficulty)) {
+        if (((isUsed[nextVertex] == null) || (isUsed[nextVertex] == false)) && (_connectionDifficulty[vertex]![i] <= lastDifficulty)) {
           isUsed[nextVertex] = true;
           q.add(nextVertex);
           parent[nextVertex] = vertex;

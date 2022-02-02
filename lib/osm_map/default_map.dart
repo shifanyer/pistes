@@ -12,8 +12,11 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pistes/device_description/size_config.dart';
 import 'package:pistes/enums/marker_types.dart';
 import 'package:pistes/graph/resort_graph.dart';
+import 'package:pistes/osm_map/map_field.dart';
+import 'package:pistes/osm_map/polylines_handler.dart';
 
 import '../graph/resort_point.dart';
+import 'difficulty_slider.dart';
 
 class DefaultMap extends StatefulWidget {
   const DefaultMap({Key? key}) : super(key: key);
@@ -23,36 +26,23 @@ class DefaultMap extends StatefulWidget {
 }
 
 class _DefaultMapState extends State<DefaultMap> {
-  var _polyLines = <String, Polyline>{};
+  var mapUpdateController = StreamController<String>();
+  late PolyLinesHandler polyLinesHandler;
   var _markers = <String, Marker>{};
   var _resortPoints = <int, ResortPoint>{};
   Map<MarkerType, BitmapDescriptor> customMarkers = {};
   late ResortGraph resortGraph;
-  String? startPoint;
-  String? endPoint;
-  double sliderDifficulty = 2.0;
-
-  Completer<GoogleMapController> _googleMapController = Completer();
-
-  static final CameraPosition _kGooglePlex = CameraPosition(
-    target: LatLng(60.5366352, 29.7506576),
-    zoom: 14.4746,
-  );
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
 
   Future<Map<MarkerType, BitmapDescriptor>> _loadMarkers() async {
     customMarkers[MarkerType.tmpMarker] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/tmp2.png', 80));
     customMarkers[MarkerType.tmpMarkerChosen] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/tmp3.png', 80));
     return customMarkers;
+  }
+
+  @override
+  void initState() {
+    polyLinesHandler = PolyLinesHandler(mapUpdateController);
+    super.initState();
   }
 
   @override
@@ -71,15 +61,10 @@ class _DefaultMapState extends State<DefaultMap> {
                   height: SizeConfig.screenHeight * 0.8,
                   child: (snapshot.data != null)
                       ? SafeArea(
-                          child: GoogleMap(
-                            mapType: MapType.hybrid,
-                            initialCameraPosition: _kGooglePlex,
-                            polylines: _polyLines.values.toSet(),
-                            markers: _markers.values.toSet(),
-                            mapToolbarEnabled: false,
-                            onMapCreated: (GoogleMapController controller) {
-                              _googleMapController.complete(controller);
-                            },
+                          child: MainMap(
+                            markers: _markers,
+                            polyLines: polyLinesHandler.polyLines,
+                            mapUpdController: mapUpdateController,
                           ),
                         )
                       : const CircularProgressIndicator(
@@ -91,41 +76,32 @@ class _DefaultMapState extends State<DefaultMap> {
                     width: SizeConfig.screenWidth,
                     height: SizeConfig.screenHeight * 0.2,
                     color: Colors.white,
-                    child: Center(
-                      child: Slider(
-                        value: sliderDifficulty,
-                        onChanged: (double value) {
-                          setState(() {
-                            sliderDifficulty = value;
-                            _drawPath(startPoint, endPoint, sliderDifficulty.floor());
-                          });
-                        },
-                        divisions: 6,
-                        label: _difficultyByNum(sliderDifficulty.round()),
-                        min: 0,
-                        max: 6,
-                      ),
+                    child: DifficultySlider(
+                      polyLines: polyLinesHandler.polyLines,
+                      resortPoints: _resortPoints,
+                      mapUpdController: mapUpdateController,
                     ),
                   ),
                 )
               ],
             );
           }),
-      floatingActionButton: FloatingActionButton(onPressed: () async {
-        var resorts = await loadResortsData();
-        resortGraph = ResortGraph({});
-        var redLake = resorts['resorts']['red lake'];
-        var _pistes = redLake['pistes'];
-        var _aerialways = redLake['aerialways'];
-        var _points = redLake['points'];
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          var resorts = await loadResortsData();
+          resortGraph = ResortGraph();
+          var redLake = resorts['resorts']['red lake'];
+          var _pistes = redLake['pistes'];
+          var _aerialways = redLake['aerialways'];
+          var _points = redLake['points'];
 
-        _polyLines.clear();
+          polyLinesHandler.clear();
 
-        _createPistes(_pistes, _points);
-        _createAerialways(_aerialways, _points);
+          _createPistes(_pistes, _points);
+          _createAerialways(_aerialways, _points);
 
-        setState(() {});
-      },
+          mapUpdateController.add('draw resort');
+        },
         child: Text('Build'),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
@@ -143,27 +119,6 @@ class _DefaultMapState extends State<DefaultMap> {
     String jsonString = await rootBundle.loadString('assets/resorts.json');
     Map<String, dynamic> data = json.decode(jsonString);
     return data;
-  }
-
-  void _pisteTap(Polyline line) {
-    int lineWidth = 0;
-
-    if ((_polyLines[line.polylineId.value + 'selected'] == null) || (_polyLines[line.polylineId.value + 'selected']!.width == 0)) {
-      lineWidth = 12;
-    }
-
-    _polyLines[line.polylineId.value + 'selected'] = Polyline(
-        polylineId: PolylineId(line.polylineId.value + 'selected'),
-        points: line.points,
-        width: lineWidth,
-        color: Colors.orange.withOpacity(0.4),
-        consumeTapEvents: true,
-        endCap: Cap.roundCap,
-        startCap: Cap.roundCap,
-        onTap: () {
-          _pisteTap(_polyLines[line.polylineId.value]!);
-        });
-    setState(() {});
   }
 
   void _createPistes(Map pistes, Map points) {
@@ -204,15 +159,7 @@ class _DefaultMapState extends State<DefaultMap> {
           break;
       }
 
-      _polyLines[pisteKey] = (Polyline(
-          polylineId: PolylineId(pisteKey),
-          points: geoList,
-          width: 3,
-          color: pisteColor,
-          consumeTapEvents: false,
-          onTap: () {
-            _pisteTap(_polyLines[pisteKey]!);
-          }));
+      polyLinesHandler.addPiste(pisteKey, geoList, pisteColor);
 
       for (var i = 0; i < geoList.length - 1; i++) {
         var fromPoint = _createResortPoint(piste['points'].keys.toList()[i], geoList[i], isEdge: (i == 0) || (i == geoList.length - 1));
@@ -240,14 +187,7 @@ class _DefaultMapState extends State<DefaultMap> {
 
       Color aerialwayColor = Colors.black;
 
-      _polyLines[aerialwayKey] = (Polyline(
-          polylineId: PolylineId(aerialwayKey),
-          points: geoList,
-          width: 4,
-          color: aerialwayColor,
-          patterns: [PatternItem.dash(10), PatternItem.gap(10)],
-          consumeTapEvents: false,
-          onTap: () {}));
+      polyLinesHandler.addAerialway(aerialwayKey, geoList, aerialwayColor);
 
       for (var i = 0; i < geoList.length - 1; i++) {
         var fromPoint = _createResortPoint(aerialway['points'].keys.toList()[i], geoList[i], isEdge: (i == 0) || (i == geoList.length - 1));
@@ -276,40 +216,42 @@ class _DefaultMapState extends State<DefaultMap> {
   }
 
   void _markerTap(Marker marker) {
-    if (marker.markerId.value == startPoint) {
-      startPoint = null;
+    if (int.parse(marker.markerId.value) == resortGraph.startPointId) {
+      resortGraph.startPointId = null;
       _deselectMarker(marker.markerId.value);
-      _erasePath();
-      setState(() {});
+      polyLinesHandler.erasePath();
+      mapUpdateController.add('deselect start');
       return;
     }
-    if (marker.markerId.value == endPoint) {
-      endPoint = null;
+    if (int.parse(marker.markerId.value) == resortGraph.endPointId) {
+      resortGraph.endPointId = null;
       _deselectMarker(marker.markerId.value);
-      _erasePath();
-      setState(() {});
+      polyLinesHandler.erasePath();
+
+      mapUpdateController.add('deselect end');
       return;
     }
-    if (startPoint == null) {
-      startPoint = marker.markerId.value;
+    if (resortGraph.startPointId == null) {
+      resortGraph.startPointId = int.parse(marker.markerId.value);
       _selectMarker(marker.markerId.value);
-      _drawPath(startPoint, endPoint, sliderDifficulty.floor());
-      setState(() {});
+      polyLinesHandler.drawPath(_resortPoints);
+
+      mapUpdateController.add('select start');
       return;
     }
-    if (endPoint == null) {
-      endPoint = marker.markerId.value;
+    if (resortGraph.endPointId == null) {
+      resortGraph.endPointId = int.parse(marker.markerId.value);
       _selectMarker(marker.markerId.value);
-      _drawPath(startPoint, endPoint, sliderDifficulty.floor());
-      setState(() {});
+      polyLinesHandler.drawPath(_resortPoints);
+      mapUpdateController.add('select end');
       return;
     }
-    if ((startPoint != null) && (endPoint != null)) {
-      _deselectMarker(endPoint!);
+    if ((resortGraph.startPointId != null) && (resortGraph.endPointId != null)) {
+      _deselectMarker(resortGraph.endPointId.toString());
       _selectMarker(marker.markerId.value);
-      endPoint = marker.markerId.value;
-      _drawPath(startPoint, endPoint, sliderDifficulty.floor());
-      setState(() {});
+      resortGraph.endPointId = int.parse(marker.markerId.value);
+      polyLinesHandler.drawPath(_resortPoints);
+      mapUpdateController.add('replace end');
       return;
     }
   }
@@ -355,56 +297,4 @@ class _DefaultMapState extends State<DefaultMap> {
 
     return newPoint;
   }
-
-  void _drawPath(String? startPoint, String? endPoint, int difficulty) {
-    if ((startPoint != null) && (endPoint != null)) {
-      var path = resortGraph.findRoute(int.parse(startPoint), int.parse(endPoint), difficulty: difficulty);
-      _polyLines['selected path'] = Polyline(
-        polylineId: PolylineId('selected path'),
-        points: path.map((e) {
-          return _resortPoints[e]!.position;
-        }).toList(),
-        width: 12,
-        color: Colors.orange.withOpacity(0.4),
-        consumeTapEvents: false,
-      );
-      setState(() {});
-    }
-  }
-
-  void _erasePath() {
-    if (_polyLines['selected path'] != null) {
-      _polyLines.remove('selected path');
-      setState(() {});
-    }
-  }
-
-  String _difficultyByNum(int value ) {
-    String res = 'extra hard';
-    switch (value) {
-      case 0:
-        res = 'pedestrian';
-        break;
-      case 1:
-        res = 'novice';
-        break;
-      case 2:
-        res = 'easy';
-        break;
-      case 3:
-        res = 'intermediate';
-        break;
-      case 4:
-        res = 'advanced';
-        break;
-      case 5:
-        res = 'expert';
-        break;
-      case 6:
-        res = 'god';
-        break;
-    }
-    return res;
-  }
-
 }

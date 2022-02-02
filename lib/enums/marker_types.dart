@@ -1,1 +1,1 @@
-enum MarkerType {tmpMarker, tmpMarkerChosen}
+enum MarkerType { tmpMarker, tmpMarkerChosen }
