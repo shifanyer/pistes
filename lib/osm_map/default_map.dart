@@ -35,7 +35,19 @@ class _DefaultMapState extends State<DefaultMap> {
 
   Future<Map<MarkerType, BitmapDescriptor>> _loadMarkers() async {
     customMarkers[MarkerType.tmpMarker] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/tmp2.png', 80));
-    customMarkers[MarkerType.tmpMarkerChosen] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/tmp3.png', 80));
+    customMarkers[MarkerType.tmpMarkerChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/tmp3.png', 80));
+    customMarkers[MarkerType.green] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/green.png', 80));
+    customMarkers[MarkerType.greenChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/green_chose.png', 80));
+    customMarkers[MarkerType.blue] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/blue.png', 80));
+    customMarkers[MarkerType.blueChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/blue_chose.png', 80));
+    customMarkers[MarkerType.red] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/red.png', 80));
+    customMarkers[MarkerType.redChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/red_chose.png', 80));
+    customMarkers[MarkerType.black] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/black.png', 80));
+    customMarkers[MarkerType.blackChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/black_chose.png', 80));
+    customMarkers[MarkerType.yellow] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/yellow.png', 80));
+    customMarkers[MarkerType.yellowChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/yellow_chose.png', 80));
+    customMarkers[MarkerType.aerialway] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/aerialway.png', 80));
+    customMarkers[MarkerType.aerialwayChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/aerialway_chose.png', 80));
     return customMarkers;
   }
 
@@ -122,6 +134,7 @@ class _DefaultMapState extends State<DefaultMap> {
   }
 
   void _createPistes(Map pistes, Map points) {
+
     var startPoints = <String>[];
     var endPoints = <String>[];
     for (var pisteKey in pistes.keys) {
@@ -133,8 +146,8 @@ class _DefaultMapState extends State<DefaultMap> {
       startPoints.add(firstPointKey);
       endPoints.add(lastPointKey);
 
-      int difficulty = 6;
       Color pisteColor = Colors.purple;
+      int difficulty = 6;
 
       switch (piste['difficulty']) {
         case 'novice':
@@ -159,6 +172,9 @@ class _DefaultMapState extends State<DefaultMap> {
           break;
       }
 
+      _createMarker(firstPointKey, points, difficulty);
+      _createMarker(lastPointKey, points, difficulty);
+
       polyLinesHandler.addPiste(pisteKey, geoList, pisteColor);
 
       for (var i = 0; i < geoList.length - 1; i++) {
@@ -168,8 +184,8 @@ class _DefaultMapState extends State<DefaultMap> {
       }
     }
 
-    _createMarkers(startPoints, points);
-    _createMarkers(endPoints, points);
+    // _createMarkers(startPoints, points, difficulty);
+    // _createMarkers(endPoints, points, difficulty);
   }
 
   void _createAerialways(Map aerialways, Map points) {
@@ -197,12 +213,64 @@ class _DefaultMapState extends State<DefaultMap> {
       }
     }
 
-    _createMarkers(startPoints, points);
-    _createMarkers(endPoints, points);
+    _createMarkers(startPoints, points, 0);
+    _createMarkers(endPoints, points, 0);
   }
 
-  void _createMarkers(List<String> pointsKeyList, Map points) {
+  void _createMarker(String pointKey, Map points, int markerType) {
     var tmpMarker = customMarkers[MarkerType.tmpMarker]!;
+    switch (markerType) {
+      case (0):
+        tmpMarker = customMarkers[MarkerType.aerialway]!;
+        break;
+      case (1):
+        tmpMarker = customMarkers[MarkerType.green]!;
+        break;
+      case (2):
+        tmpMarker = customMarkers[MarkerType.blue]!;
+        break;
+      case (3):
+        tmpMarker = customMarkers[MarkerType.red]!;
+        break;
+      case (4):
+        tmpMarker = customMarkers[MarkerType.black]!;
+        break;
+      case (5):
+        tmpMarker = customMarkers[MarkerType.yellow]!;
+        break;
+    }
+    _markers[pointKey] = Marker(
+        markerId: MarkerId(pointKey),
+        position: LatLng(double.parse(points[pointKey]['lat']), double.parse(points[pointKey]['lon'])),
+        icon: tmpMarker,
+        anchor: const Offset(0.5, 0.5),
+        onTap: () {
+          _markerTap(_markers[pointKey]!);
+        });
+  }
+
+  void _createMarkers(List<String> pointsKeyList, Map points, int markerType) {
+    var tmpMarker = customMarkers[MarkerType.tmpMarker]!;
+    switch (markerType) {
+      case (0):
+        tmpMarker = customMarkers[MarkerType.aerialway]!;
+        break;
+      case (1):
+        tmpMarker = customMarkers[MarkerType.green]!;
+        break;
+      case (2):
+        tmpMarker = customMarkers[MarkerType.blue]!;
+        break;
+      case (3):
+        tmpMarker = customMarkers[MarkerType.red]!;
+        break;
+      case (4):
+        tmpMarker = customMarkers[MarkerType.black]!;
+        break;
+      case (5):
+        tmpMarker = customMarkers[MarkerType.yellow]!;
+        break;
+    }
     for (var pointKey in pointsKeyList) {
       _markers[pointKey] = Marker(
           markerId: MarkerId(pointKey),
@@ -257,10 +325,29 @@ class _DefaultMapState extends State<DefaultMap> {
   }
 
   void _selectMarker(String markerId) {
+    var newIcon = customMarkers[MarkerType.tmpMarkerChose];
+    if (_markers[markerId]!.icon == customMarkers[MarkerType.aerialway]) {
+      newIcon = customMarkers[MarkerType.aerialwayChose];
+    }
+    if (_markers[markerId]!.icon == customMarkers[MarkerType.green]) {
+      newIcon = customMarkers[MarkerType.greenChose];
+    }
+    if (_markers[markerId]!.icon == customMarkers[MarkerType.blue]) {
+      newIcon = customMarkers[MarkerType.blueChose];
+    }
+    if (_markers[markerId]!.icon == customMarkers[MarkerType.red]) {
+      newIcon = customMarkers[MarkerType.redChose];
+    }
+    if (_markers[markerId]!.icon == customMarkers[MarkerType.black]) {
+      newIcon = customMarkers[MarkerType.blackChose];
+    }
+    if (_markers[markerId]!.icon == customMarkers[MarkerType.yellow]) {
+      newIcon = customMarkers[MarkerType.yellowChose];
+    }
     _markers[markerId] = Marker(
         markerId: _markers[markerId]!.markerId,
         position: _markers[markerId]!.position,
-        icon: customMarkers[MarkerType.tmpMarkerChosen]!,
+        icon: newIcon!,
         anchor: const Offset(0.5, 0.5),
         onTap: () {
           _markerTap(_markers[markerId]!);
@@ -268,10 +355,31 @@ class _DefaultMapState extends State<DefaultMap> {
   }
 
   void _deselectMarker(String markerId) {
+
+    var newIcon = customMarkers[MarkerType.tmpMarker];
+    if (_markers[markerId]!.icon == customMarkers[MarkerType.aerialwayChose]) {
+      newIcon = customMarkers[MarkerType.aerialway];
+    }
+    if (_markers[markerId]!.icon == customMarkers[MarkerType.greenChose]) {
+      newIcon = customMarkers[MarkerType.green];
+    }
+    if (_markers[markerId]!.icon == customMarkers[MarkerType.blueChose]) {
+      newIcon = customMarkers[MarkerType.blue];
+    }
+    if (_markers[markerId]!.icon == customMarkers[MarkerType.redChose]) {
+      newIcon = customMarkers[MarkerType.red];
+    }
+    if (_markers[markerId]!.icon == customMarkers[MarkerType.blackChose]) {
+      newIcon = customMarkers[MarkerType.black];
+    }
+    if (_markers[markerId]!.icon == customMarkers[MarkerType.yellowChose]) {
+      newIcon = customMarkers[MarkerType.yellow];
+    }
+
     _markers[markerId] = Marker(
         markerId: _markers[markerId]!.markerId,
         position: _markers[markerId]!.position,
-        icon: customMarkers[MarkerType.tmpMarker]!,
+        icon: newIcon!,
         anchor: const Offset(0.5, 0.5),
         onTap: () {
           _markerTap(_markers[markerId]!);

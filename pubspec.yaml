@@ -34,3 +34,15 @@ flutter:
     - assets/markers/tmp.png
     - assets/markers/tmp2.png
     - assets/markers/tmp3.png
+    - assets/markers/aerialway.png
+    - assets/markers/aerialway_chose.png
+    - assets/markers/black.png
+    - assets/markers/black_chose.png
+    - assets/markers/green.png
+    - assets/markers/green_chose.png
+    - assets/markers/blue.png
+    - assets/markers/blue_chose.png
+    - assets/markers/red.png
+    - assets/markers/red_chose.png
+    - assets/markers/yellow.png
+    - assets/markers/yellow_chose.png
