@@ -30,7 +30,6 @@ class _DefaultMapState extends State<DefaultMap> {
   var mapUpdateController = StreamController<String>();
   late PolyLinesHandler polyLinesHandler;
   late MarkersHandler markersHandler;
-  var _resortPoints = <int, ResortPoint>{};
   Map<MarkerType, BitmapDescriptor> customMarkers = {};
   late ResortGraph resortGraph;
 
@@ -218,7 +217,6 @@ class _DefaultMapState extends State<DefaultMap> {
   ResortPoint _createResortPoint(String pointId, LatLng point, {bool isEdge = false}) {
     var newPoint = ResortPoint(int.parse(pointId), point, isEdge: isEdge);
     resortGraph.addResortPoint(newPoint);
-    _resortPoints[int.parse(pointId)] = newPoint;
 
     return newPoint;
   }
