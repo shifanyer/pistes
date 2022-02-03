@@ -31,6 +31,9 @@ flutter:
 
   assets:
     - assets/resorts.json
+    - assets/resorts_redLake.json
+    - assets/resorts_Sheregesh.json
+
     - assets/markers/tmp.png
     - assets/markers/tmp2.png
     - assets/markers/tmp3.png

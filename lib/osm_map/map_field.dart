@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -19,12 +20,11 @@ class MainMap extends StatefulWidget {
 class _MainMapState extends State<MainMap> {
   static const CameraPosition _kGooglePlex = CameraPosition(
     target: LatLng(60.5366352, 29.7506576),
-    zoom: 14.4746,
+    zoom: 15
   );
 
   Completer<GoogleMapController> _googleMapController = Completer();
 
-  // widget.mapUpdController.stream.listen((item) => setState(() {}));
 
   @override
   Widget build(BuildContext context) {

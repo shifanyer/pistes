@@ -11,10 +11,12 @@ import 'package:flutter_osm_plugin/flutter_osm_plugin.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pistes/device_description/size_config.dart';
 import 'package:pistes/enums/marker_types.dart';
+import 'package:pistes/files_handler/resort_data.dart';
 import 'package:pistes/graph/resort_graph.dart';
 import 'package:pistes/osm_map/map_field.dart';
 import 'package:pistes/osm_map/markers_handler.dart';
 import 'package:pistes/osm_map/polylines_handler.dart';
+import 'package:pistes/sidebar_menu/sideBar.dart';
 
 import '../graph/resort_point.dart';
 import 'difficulty_slider.dart';
@@ -22,12 +24,21 @@ import 'difficulty_slider.dart';
 class DefaultMap extends StatefulWidget {
   const DefaultMap({Key? key}) : super(key: key);
 
+  // DefaultMap._privateConstructor();
+  //
+  // static final DefaultMap _instance = DefaultMap._privateConstructor();
+  //
+  // factory DefaultMap() {
+  //   return _instance;
+  // }
+
   @override
   State<DefaultMap> createState() => _DefaultMapState();
 }
 
 class _DefaultMapState extends State<DefaultMap> {
   var mapUpdateController = StreamController<String>();
+  var currentResortController = StreamController<String>();
   late PolyLinesHandler polyLinesHandler;
   late MarkersHandler markersHandler;
   Map<MarkerType, BitmapDescriptor> customMarkers = {};
@@ -55,6 +66,9 @@ class _DefaultMapState extends State<DefaultMap> {
   void initState() {
     polyLinesHandler = PolyLinesHandler(mapUpdateController);
     markersHandler = MarkersHandler(customMarkers, polyLinesHandler, mapUpdateController);
+    currentResortController.stream.listen((event) {
+      buildResortGraph(dataPath: event);
+    });
     super.initState();
   }
 
@@ -63,6 +77,9 @@ class _DefaultMapState extends State<DefaultMap> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.blue,
+      ),
+      drawer: SideBar(
+        currentResortController: currentResortController,
       ),
       body: FutureBuilder(
           future: _loadMarkers(),
@@ -101,19 +118,7 @@ class _DefaultMapState extends State<DefaultMap> {
           }),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          var resorts = await loadResortsData();
-          resortGraph = ResortGraph();
-          var redLake = resorts['resorts']['red lake'];
-          var _pistes = redLake['pistes'];
-          var _aerialways = redLake['aerialways'];
-          var _points = redLake['points'];
-
-          polyLinesHandler.clear();
-
-          _createPistes(_pistes, _points);
-          _createAerialways(_aerialways, _points);
-
-          mapUpdateController.add('draw resort');
+          buildResortGraph();
         },
         child: const Text('Build'),
       ),
@@ -126,12 +131,6 @@ class _DefaultMapState extends State<DefaultMap> {
     ui.Codec codec = await ui.instantiateImageCodec(data.buffer.asUint8List(), targetWidth: width);
     ui.FrameInfo fi = await codec.getNextFrame();
     return (await fi.image.toByteData(format: ui.ImageByteFormat.png))!.buffer.asUint8List();
-  }
-
-  Future<Map<String, dynamic>> loadResortsData() async {
-    String jsonString = await rootBundle.loadString('assets/resorts.json');
-    Map<String, dynamic> data = json.decode(jsonString);
-    return data;
   }
 
   void _createPistes(Map pistes, Map points) {
@@ -219,5 +218,22 @@ class _DefaultMapState extends State<DefaultMap> {
     resortGraph.addResortPoint(newPoint);
 
     return newPoint;
+  }
+
+  Future<void> buildResortGraph({dataPath = ''}) async {
+    var resorts = await ResortData.loadResortsData(dataPath: dataPath);
+    resortGraph = ResortGraph();
+    var redLake = resorts['resorts']['red lake'];
+    var _pistes = redLake['pistes'];
+    var _aerialways = redLake['aerialways'];
+    var _points = redLake['points'];
+
+    polyLinesHandler.clear();
+    markersHandler.clear();
+
+    _createPistes(_pistes, _points);
+    _createAerialways(_aerialways, _points);
+
+    mapUpdateController.add('draw resort');
   }
 }

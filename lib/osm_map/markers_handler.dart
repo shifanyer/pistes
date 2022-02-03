@@ -186,4 +186,8 @@ class MarkersHandler {
         });
   }
 
+  void clear() {
+    markers.clear();
+  }
+
 }
