@@ -6,6 +6,7 @@ import 'package:pistes/graph/resort_point.dart';
 class ResortGraph {
   Map<int, List<ResortPoint>> _connections = {};
   Map<int, List<int>> _connectionDifficulty = {};
+  Map<int, ResortPoint> _resortPoints = {};
   int? startPointId;
   int? endPointId;
   int lastDifficulty = 2;
@@ -28,7 +29,7 @@ class ResortGraph {
     }
   }
 
-  List findRoute() {
+  List<LatLng> findRoute() {
     if ((startPointId == null) || (endPointId == null)){
       return [];
     }
@@ -58,11 +59,26 @@ class ResortGraph {
     if ((isUsed[endId] == null) || (isUsed[endId] == false)) {
       return [];
     } else {
-      var path = <int>[];
+      var path = <LatLng>[];
       for (var vertex = endId; vertex != -1; vertex = parent[vertex]!) {
-        path.add(vertex);
+        path.add(_resortPoints[vertex]!.position);
       }
       return path;
+    }
+  }
+
+  void addResortPoint(ResortPoint newPoint) {
+    _resortPoints[newPoint.pointId] = newPoint;
+    if (newPoint.isEdge) {
+      for (int i = 0; i < _resortPoints.values.length; i++) {
+        var resortPoint = _resortPoints.values.toList()[i];
+        if (resortPoint.isEdge) {
+          if (ResortPoint.calculateDistance(resortPoint, newPoint) <= 55.0) {
+            addConnection(resortPoint, newPoint);
+            addConnection(newPoint, resortPoint);
+          }
+        }
+      }
     }
   }
 

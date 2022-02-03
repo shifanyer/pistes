@@ -10,10 +10,9 @@ import '../graph/resort_point.dart';
 class DifficultySlider extends StatefulWidget {
   double sliderDifficulty = 2.0;
   var polyLines = <String, Polyline>{};
-  var resortPoints = <int, ResortPoint>{};
   final StreamController<String> mapUpdController;
 
-  DifficultySlider({Key? key, required this.polyLines, required this.resortPoints, required this.mapUpdController}) : super(key: key);
+  DifficultySlider({Key? key, required this.polyLines, required this.mapUpdController}) : super(key: key);
 
   @override
   State<DifficultySlider> createState() => _DifficultySliderState();
@@ -75,9 +74,7 @@ class _DifficultySliderState extends State<DifficultySlider> {
     var path = newGraph.findRoute();
     widget.polyLines['selected path'] = Polyline(
       polylineId: PolylineId('selected path'),
-      points: path.map((e) {
-        return widget.resortPoints[e]!.position;
-      }).toList(),
+      points: path,
       width: 12,
       color: Colors.orange.withOpacity(0.4),
       consumeTapEvents: false,

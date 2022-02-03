@@ -59,14 +59,12 @@ class PolyLinesHandler {
         onTap: () {}));
   }
 
-  void drawPath(Map<int, ResortPoint> resortPoints) {
+  void drawPath() {
     var newGraph = ResortGraph();
     var path = newGraph.findRoute();
     polyLines['selected path'] = Polyline(
       polylineId: PolylineId('selected path'),
-      points: path.map((e) {
-        return resortPoints[e]!.position;
-      }).toList(),
+      points: path,
       width: 12,
       color: Colors.orange.withOpacity(0.4),
       consumeTapEvents: false,

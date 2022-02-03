@@ -23,4 +23,14 @@ class ResortPoint {
   String toString() {
     return pointId.toString() + ': ' + position.toString();
   }
+
+  @override
+  bool operator ==(Object other) {
+    return (other is ResortPoint) && (other.pointId == pointId);
+  }
+
+  @override
+  int get hashCode => super.hashCode;
+
+
 }

@@ -13,6 +13,7 @@ import 'package:pistes/device_description/size_config.dart';
 import 'package:pistes/enums/marker_types.dart';
 import 'package:pistes/graph/resort_graph.dart';
 import 'package:pistes/osm_map/map_field.dart';
+import 'package:pistes/osm_map/markers_handler.dart';
 import 'package:pistes/osm_map/polylines_handler.dart';
 
 import '../graph/resort_point.dart';
@@ -28,7 +29,7 @@ class DefaultMap extends StatefulWidget {
 class _DefaultMapState extends State<DefaultMap> {
   var mapUpdateController = StreamController<String>();
   late PolyLinesHandler polyLinesHandler;
-  var _markers = <String, Marker>{};
+  late MarkersHandler markersHandler;
   var _resortPoints = <int, ResortPoint>{};
   Map<MarkerType, BitmapDescriptor> customMarkers = {};
   late ResortGraph resortGraph;
@@ -54,6 +55,7 @@ class _DefaultMapState extends State<DefaultMap> {
   @override
   void initState() {
     polyLinesHandler = PolyLinesHandler(mapUpdateController);
+    markersHandler = MarkersHandler(customMarkers, polyLinesHandler, mapUpdateController);
     super.initState();
   }
 
@@ -66,6 +68,7 @@ class _DefaultMapState extends State<DefaultMap> {
       body: FutureBuilder(
           future: _loadMarkers(),
           builder: (context, snapshot) {
+            markersHandler.customMarkers = customMarkers;
             return Column(
               children: [
                 SizedBox(
@@ -74,7 +77,7 @@ class _DefaultMapState extends State<DefaultMap> {
                   child: (snapshot.data != null)
                       ? SafeArea(
                           child: MainMap(
-                            markers: _markers,
+                            markers: markersHandler.markers,
                             polyLines: polyLinesHandler.polyLines,
                             mapUpdController: mapUpdateController,
                           ),
@@ -90,7 +93,6 @@ class _DefaultMapState extends State<DefaultMap> {
                     color: Colors.white,
                     child: DifficultySlider(
                       polyLines: polyLinesHandler.polyLines,
-                      resortPoints: _resortPoints,
                       mapUpdController: mapUpdateController,
                     ),
                   ),
@@ -114,7 +116,7 @@ class _DefaultMapState extends State<DefaultMap> {
 
           mapUpdateController.add('draw resort');
         },
-        child: Text('Build'),
+        child: const Text('Build'),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
     );
@@ -134,7 +136,6 @@ class _DefaultMapState extends State<DefaultMap> {
   }
 
   void _createPistes(Map pistes, Map points) {
-
     var startPoints = <String>[];
     var endPoints = <String>[];
     for (var pisteKey in pistes.keys) {
@@ -172,8 +173,8 @@ class _DefaultMapState extends State<DefaultMap> {
           break;
       }
 
-      _createMarker(firstPointKey, points, difficulty);
-      _createMarker(lastPointKey, points, difficulty);
+      markersHandler.createMarker(firstPointKey, points, difficulty);
+      markersHandler.createMarker(lastPointKey, points, difficulty);
 
       polyLinesHandler.addPiste(pisteKey, geoList, pisteColor);
 
@@ -183,9 +184,6 @@ class _DefaultMapState extends State<DefaultMap> {
         resortGraph.addConnection(fromPoint, toPoint, difficulty: difficulty);
       }
     }
-
-    // _createMarkers(startPoints, points, difficulty);
-    // _createMarkers(endPoints, points, difficulty);
   }
 
   void _createAerialways(Map aerialways, Map points) {
@@ -213,195 +211,14 @@ class _DefaultMapState extends State<DefaultMap> {
       }
     }
 
-    _createMarkers(startPoints, points, 0);
-    _createMarkers(endPoints, points, 0);
-  }
-
-  void _createMarker(String pointKey, Map points, int markerType) {
-    var tmpMarker = customMarkers[MarkerType.tmpMarker]!;
-    switch (markerType) {
-      case (0):
-        tmpMarker = customMarkers[MarkerType.aerialway]!;
-        break;
-      case (1):
-        tmpMarker = customMarkers[MarkerType.green]!;
-        break;
-      case (2):
-        tmpMarker = customMarkers[MarkerType.blue]!;
-        break;
-      case (3):
-        tmpMarker = customMarkers[MarkerType.red]!;
-        break;
-      case (4):
-        tmpMarker = customMarkers[MarkerType.black]!;
-        break;
-      case (5):
-        tmpMarker = customMarkers[MarkerType.yellow]!;
-        break;
-    }
-    _markers[pointKey] = Marker(
-        markerId: MarkerId(pointKey),
-        position: LatLng(double.parse(points[pointKey]['lat']), double.parse(points[pointKey]['lon'])),
-        icon: tmpMarker,
-        anchor: const Offset(0.5, 0.5),
-        onTap: () {
-          _markerTap(_markers[pointKey]!);
-        });
-  }
-
-  void _createMarkers(List<String> pointsKeyList, Map points, int markerType) {
-    var tmpMarker = customMarkers[MarkerType.tmpMarker]!;
-    switch (markerType) {
-      case (0):
-        tmpMarker = customMarkers[MarkerType.aerialway]!;
-        break;
-      case (1):
-        tmpMarker = customMarkers[MarkerType.green]!;
-        break;
-      case (2):
-        tmpMarker = customMarkers[MarkerType.blue]!;
-        break;
-      case (3):
-        tmpMarker = customMarkers[MarkerType.red]!;
-        break;
-      case (4):
-        tmpMarker = customMarkers[MarkerType.black]!;
-        break;
-      case (5):
-        tmpMarker = customMarkers[MarkerType.yellow]!;
-        break;
-    }
-    for (var pointKey in pointsKeyList) {
-      _markers[pointKey] = Marker(
-          markerId: MarkerId(pointKey),
-          position: LatLng(double.parse(points[pointKey]['lat']), double.parse(points[pointKey]['lon'])),
-          icon: tmpMarker,
-          anchor: const Offset(0.5, 0.5),
-          onTap: () {
-            _markerTap(_markers[pointKey]!);
-          });
-    }
-  }
-
-  void _markerTap(Marker marker) {
-    if (int.parse(marker.markerId.value) == resortGraph.startPointId) {
-      resortGraph.startPointId = null;
-      _deselectMarker(marker.markerId.value);
-      polyLinesHandler.erasePath();
-      mapUpdateController.add('deselect start');
-      return;
-    }
-    if (int.parse(marker.markerId.value) == resortGraph.endPointId) {
-      resortGraph.endPointId = null;
-      _deselectMarker(marker.markerId.value);
-      polyLinesHandler.erasePath();
-
-      mapUpdateController.add('deselect end');
-      return;
-    }
-    if (resortGraph.startPointId == null) {
-      resortGraph.startPointId = int.parse(marker.markerId.value);
-      _selectMarker(marker.markerId.value);
-      polyLinesHandler.drawPath(_resortPoints);
-
-      mapUpdateController.add('select start');
-      return;
-    }
-    if (resortGraph.endPointId == null) {
-      resortGraph.endPointId = int.parse(marker.markerId.value);
-      _selectMarker(marker.markerId.value);
-      polyLinesHandler.drawPath(_resortPoints);
-      mapUpdateController.add('select end');
-      return;
-    }
-    if ((resortGraph.startPointId != null) && (resortGraph.endPointId != null)) {
-      _deselectMarker(resortGraph.endPointId.toString());
-      _selectMarker(marker.markerId.value);
-      resortGraph.endPointId = int.parse(marker.markerId.value);
-      polyLinesHandler.drawPath(_resortPoints);
-      mapUpdateController.add('replace end');
-      return;
-    }
-  }
-
-  void _selectMarker(String markerId) {
-    var newIcon = customMarkers[MarkerType.tmpMarkerChose];
-    if (_markers[markerId]!.icon == customMarkers[MarkerType.aerialway]) {
-      newIcon = customMarkers[MarkerType.aerialwayChose];
-    }
-    if (_markers[markerId]!.icon == customMarkers[MarkerType.green]) {
-      newIcon = customMarkers[MarkerType.greenChose];
-    }
-    if (_markers[markerId]!.icon == customMarkers[MarkerType.blue]) {
-      newIcon = customMarkers[MarkerType.blueChose];
-    }
-    if (_markers[markerId]!.icon == customMarkers[MarkerType.red]) {
-      newIcon = customMarkers[MarkerType.redChose];
-    }
-    if (_markers[markerId]!.icon == customMarkers[MarkerType.black]) {
-      newIcon = customMarkers[MarkerType.blackChose];
-    }
-    if (_markers[markerId]!.icon == customMarkers[MarkerType.yellow]) {
-      newIcon = customMarkers[MarkerType.yellowChose];
-    }
-    _markers[markerId] = Marker(
-        markerId: _markers[markerId]!.markerId,
-        position: _markers[markerId]!.position,
-        icon: newIcon!,
-        anchor: const Offset(0.5, 0.5),
-        onTap: () {
-          _markerTap(_markers[markerId]!);
-        });
-  }
-
-  void _deselectMarker(String markerId) {
-
-    var newIcon = customMarkers[MarkerType.tmpMarker];
-    if (_markers[markerId]!.icon == customMarkers[MarkerType.aerialwayChose]) {
-      newIcon = customMarkers[MarkerType.aerialway];
-    }
-    if (_markers[markerId]!.icon == customMarkers[MarkerType.greenChose]) {
-      newIcon = customMarkers[MarkerType.green];
-    }
-    if (_markers[markerId]!.icon == customMarkers[MarkerType.blueChose]) {
-      newIcon = customMarkers[MarkerType.blue];
-    }
-    if (_markers[markerId]!.icon == customMarkers[MarkerType.redChose]) {
-      newIcon = customMarkers[MarkerType.red];
-    }
-    if (_markers[markerId]!.icon == customMarkers[MarkerType.blackChose]) {
-      newIcon = customMarkers[MarkerType.black];
-    }
-    if (_markers[markerId]!.icon == customMarkers[MarkerType.yellowChose]) {
-      newIcon = customMarkers[MarkerType.yellow];
-    }
-
-    _markers[markerId] = Marker(
-        markerId: _markers[markerId]!.markerId,
-        position: _markers[markerId]!.position,
-        icon: newIcon!,
-        anchor: const Offset(0.5, 0.5),
-        onTap: () {
-          _markerTap(_markers[markerId]!);
-        });
+    markersHandler.createMarkers(startPoints, points, 0);
+    markersHandler.createMarkers(endPoints, points, 0);
   }
 
   ResortPoint _createResortPoint(String pointId, LatLng point, {bool isEdge = false}) {
     var newPoint = ResortPoint(int.parse(pointId), point, isEdge: isEdge);
-
+    resortGraph.addResortPoint(newPoint);
     _resortPoints[int.parse(pointId)] = newPoint;
-
-    if (newPoint.isEdge) {
-      for (int i = 0; i < _resortPoints.values.length; i++) {
-        var resortPoint = _resortPoints.values.toList()[i];
-        if (resortPoint.isEdge) {
-          if (ResortPoint.calculateDistance(resortPoint, newPoint) <= 55.0) {
-            resortGraph.addConnection(resortPoint, newPoint);
-            resortGraph.addConnection(newPoint, resortPoint);
-          }
-        }
-      }
-    }
 
     return newPoint;
   }
