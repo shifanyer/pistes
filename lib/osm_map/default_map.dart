@@ -223,10 +223,10 @@ class _DefaultMapState extends State<DefaultMap> {
   Future<void> buildResortGraph({dataPath = ''}) async {
     var resorts = await ResortData.loadResortsData(dataPath: dataPath);
     resortGraph = ResortGraph();
-    var redLake = resorts['resorts']['red lake'];
-    var _pistes = redLake['pistes'];
-    var _aerialways = redLake['aerialways'];
-    var _points = redLake['points'];
+    var resort = resorts['resort'];
+    var _pistes = resort['pistes'];
+    var _aerialways = resort['aerialways'];
+    var _points = resort['points'];
 
     polyLinesHandler.clear();
     markersHandler.clear();
