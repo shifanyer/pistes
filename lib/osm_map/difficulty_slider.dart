@@ -79,7 +79,6 @@ class _DifficultySliderState extends State<DifficultySlider> {
       color: Colors.orange.withOpacity(0.4),
       consumeTapEvents: false,
     );
-    print('path: ${path}');
     widget.mapUpdController.add('draw path');
   }
 }

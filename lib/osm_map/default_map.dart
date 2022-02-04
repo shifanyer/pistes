@@ -45,20 +45,22 @@ class _DefaultMapState extends State<DefaultMap> {
   late ResortGraph resortGraph;
 
   Future<Map<MarkerType, BitmapDescriptor>> _loadMarkers() async {
-    customMarkers[MarkerType.tmpMarker] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/tmp2.png', 80));
-    customMarkers[MarkerType.tmpMarkerChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/tmp3.png', 80));
-    customMarkers[MarkerType.green] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/green.png', 80));
-    customMarkers[MarkerType.greenChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/green_chose.png', 80));
-    customMarkers[MarkerType.blue] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/blue.png', 80));
-    customMarkers[MarkerType.blueChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/blue_chose.png', 80));
-    customMarkers[MarkerType.red] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/red.png', 80));
-    customMarkers[MarkerType.redChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/red_chose.png', 80));
-    customMarkers[MarkerType.black] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/black.png', 80));
-    customMarkers[MarkerType.blackChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/black_chose.png', 80));
-    customMarkers[MarkerType.yellow] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/yellow.png', 80));
-    customMarkers[MarkerType.yellowChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/yellow_chose.png', 80));
-    customMarkers[MarkerType.aerialway] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/aerialway.png', 80));
-    customMarkers[MarkerType.aerialwayChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/aerialway_chose.png', 80));
+    int markerSize = 25;
+    int choseMarkerSize = 40;
+    customMarkers[MarkerType.tmpMarker] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/tmp2.png', markerSize));
+    customMarkers[MarkerType.tmpMarkerChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/tmp3.png', choseMarkerSize));
+    customMarkers[MarkerType.green] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/green.png', markerSize));
+    customMarkers[MarkerType.greenChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/green_chose.png', choseMarkerSize));
+    customMarkers[MarkerType.blue] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/blue.png', markerSize));
+    customMarkers[MarkerType.blueChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/blue_chose.png', choseMarkerSize));
+    customMarkers[MarkerType.red] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/red.png', markerSize));
+    customMarkers[MarkerType.redChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/red_chose.png', choseMarkerSize));
+    customMarkers[MarkerType.black] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/black.png', markerSize));
+    customMarkers[MarkerType.blackChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/black_chose.png', choseMarkerSize));
+    customMarkers[MarkerType.yellow] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/yellow.png', markerSize));
+    customMarkers[MarkerType.yellowChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/yellow_chose.png', choseMarkerSize));
+    customMarkers[MarkerType.aerialway] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/aerialway.png', markerSize));
+    customMarkers[MarkerType.aerialwayChose] = BitmapDescriptor.fromBytes(await getBytesFromAsset('assets/markers/aerialway_chose.png', choseMarkerSize));
     return customMarkers;
   }
 
@@ -118,7 +120,7 @@ class _DefaultMapState extends State<DefaultMap> {
           }),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          buildResortGraph();
+          // buildResortGraph();
         },
         child: const Text('Build'),
       ),
@@ -234,6 +236,7 @@ class _DefaultMapState extends State<DefaultMap> {
     _createPistes(_pistes, _points);
     _createAerialways(_aerialways, _points);
 
-    mapUpdateController.add('draw resort');
+    var firstPoint = _points.values.first;
+    mapUpdateController.add('draw resort camera ${firstPoint['lat']} ${firstPoint['lon']}');
   }
 }

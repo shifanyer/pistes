@@ -24,13 +24,18 @@ class _MainMapState extends State<MainMap> {
   );
 
   Completer<GoogleMapController> _googleMapController = Completer();
-
+  late GoogleMapController mapController;
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<String>(
         stream: widget.mapUpdController.stream,
         builder: (context, snapshot) {
+          if (snapshot.data?.contains('camera') ?? false) {
+            var lat = double.parse(snapshot.data!.split('camera ').last.split(' ').first);
+            var lon = double.parse(snapshot.data!.split('camera ').last.split(' ').last);
+            mapController.animateCamera(CameraUpdate.newLatLngZoom(LatLng(lat, lon), 14));
+          }
           return GoogleMap(
             mapType: MapType.hybrid,
             initialCameraPosition: _kGooglePlex,
@@ -39,6 +44,7 @@ class _MainMapState extends State<MainMap> {
             mapToolbarEnabled: false,
             onMapCreated: (GoogleMapController controller) {
               _googleMapController.complete(controller);
+              mapController = controller;
             },
           );
         });

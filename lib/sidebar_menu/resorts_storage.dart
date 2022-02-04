@@ -35,5 +35,5 @@ class DataResort {
   bool isLastVersion;
   final String fileName;
 
-  DataResort(this.fileName, [this.isLoaded = false, this.isLastVersion = false]);
+  DataResort(this.fileName, [this.isLoaded = false, this.isLastVersion = true]);
 }
