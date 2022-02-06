@@ -20,6 +20,7 @@ dependencies:
   path_provider: ^2.0.8
   firebase_core: ^1.12.0
   firebase_storage: ^10.2.6
+  google_sign_in: ^5.2.3
 
 dev_dependencies:
   flutter_test:
@@ -33,9 +34,6 @@ flutter:
 
   assets:
     - assets/resorts.json
-    - assets/resorts_redLake.json
-    - assets/resorts_Sheregesh.json
-    - assets/resorts_Elbrus.json
 
     - assets/markers/tmp.png
     - assets/markers/tmp2.png

@@ -12,9 +12,6 @@ class ResortsStorage {
   static Future<Map<String, dynamic>> downloadedResorts() async {
     var assetPath = 'assets/resorts.json';
 
-    var dirPath = await getApplicationDocumentsDirectory();
-    print('dirPath: ${dirPath}');
-
     String jsonString = await rootBundle.loadString(assetPath);
     Map<String, dynamic> data = json.decode(jsonString);
     return data;
@@ -31,46 +28,52 @@ class ResortsStorage {
   static Future<List<DataResort>> resortsData() async {
     var res = <DataResort>[];
     var deviceResorts = (await downloadedResorts())['resorts'].values;
-    // var anyResorts = allResorts();
-    print('deviceResorts: ${deviceResorts}');
-    await downloadResort('resorts_redLake');
+
     for (var resort in deviceResorts) {
       res.add(DataResort(resort['name'], LatLng(double.parse(resort['point']['lat']), double.parse(resort['point']['lon'])), resort['isLoaded'],
           resort['needUpdate']));
-      print('resort: ${resort}');
-      // if (deviceResorts.contains(resort)) {
-      //   res.add(DataResort(resort['name'], LatLng(double.parse(resort['point']['lat']), double.parse(resort['point']['lon'])), resort['isLoaded'],
-      //       resort['needUpdate']));
-      // } else {
-      //   res.add(DataResort(resort['name'], LatLng(double.parse(resort['point']['lat']), double.parse(resort['point']['lon']))));
-      // }
     }
-    print('res: ${res}');
     return res;
   }
 
   static Future<void> downloadResort(String fileName) async {
     await Firebase.initializeApp();
-    var resortStorageRef = firebase_storage.FirebaseStorage.instance.ref('resorts/resorts_redLake.json');
+    var resortStorageRef = firebase_storage.FirebaseStorage.instance.ref('resorts/$fileName.json');
 
     Directory appDocDir = await getApplicationDocumentsDirectory();
-    print('appDocDir: ${appDocDir.path}');
 
     File downloadToFile = File('${appDocDir.path}/resorts/$fileName.json');
-
+    try {
+      downloadToFile.create(recursive: true);
+    } catch (e) {
+      print('IOFileError: ${e}');
+    }
     try {
       await resortStorageRef.writeToFile(downloadToFile);
     } on firebase_core.FirebaseException catch (e) {
       print('FirebaseException: ${e}');
     }
   }
+
+  // static updateResortsFile(Map<String, dynamic> newData) async {
+  //   var stringData = json.encode(newData);
+  //   var assetPath = 'assets/resorts.json';
+  //
+  //   String jsonString = await rootBundle.;
+  // }
 }
 
 class DataResort {
   bool isLoaded;
   bool isLastVersion;
+  bool isLoading;
   final String fileName;
   final LatLng point;
 
-  DataResort(this.fileName, this.point, [this.isLoaded = false, this.isLastVersion = true]);
+  DataResort(this.fileName, this.point, [this.isLoaded = false, this.isLastVersion = true, this.isLoading = false]);
+
+  @override
+  String toString() {
+    return '{fileName: ${this.fileName}, isLoaded: ${this.isLoaded}, isLoading: ${this.isLoading}, isLastVersion: ${this.isLastVersion}';
+  }
 }

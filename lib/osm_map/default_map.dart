@@ -69,7 +69,7 @@ class _DefaultMapState extends State<DefaultMap> {
     polyLinesHandler = PolyLinesHandler(mapUpdateController);
     markersHandler = MarkersHandler(customMarkers, polyLinesHandler, mapUpdateController);
     currentResortController.stream.listen((event) {
-      buildResortGraph(dataPath: event);
+      buildResortGraph(event);
     });
     super.initState();
   }
@@ -228,8 +228,8 @@ class _DefaultMapState extends State<DefaultMap> {
     return newPoint;
   }
 
-  Future<void> buildResortGraph({dataPath = ''}) async {
-    var resorts = await ResortData.loadResortsData(dataPath: dataPath);
+  Future<void> buildResortGraph(resortName) async {
+    var resorts = await ResortData.loadResortData(resortName);
     resortGraph = ResortGraph();
     var resort = resorts['resort'];
     var _pistes = resort['pistes'];

@@ -14,6 +14,8 @@ class SideBar extends StatefulWidget {
 }
 
 class _SideBarState extends State<SideBar> {
+  var resortsInfo = [];
+
   @override
   Widget build(BuildContext context) {
     return Drawer(
@@ -21,6 +23,10 @@ class _SideBarState extends State<SideBar> {
           future: ResortsStorage.resortsData(),
           builder: (context, snapshot) {
             print('snapshot: ${snapshot.data}');
+            print('resortsInfo: ${resortsInfo}');
+            if (resortsInfo.isEmpty) {
+              resortsInfo = snapshot.data ?? [];
+            }
             return ListView(
               children: [
                 DrawerHeader(
@@ -34,17 +40,21 @@ class _SideBarState extends State<SideBar> {
                     image: DecorationImage(fit: BoxFit.fill, image: NetworkImage('https://oflutter.com/wp-content/uploads/2021/02/profile-bg3.jpg')),
                   ),
                 ),
-
-                for (DataResort resortInfo in snapshot.data ?? [])
+                for (var i = 0; i < resortsInfo.length; i++)
                   ListTile(
                     leading: const Icon(Icons.favorite),
-                    title: Text(resortInfo.fileName),
+                    title: Text(resortsInfo[i].fileName),
                     onTap: () {
-                      Navigator.pop(context);
-                      widget.currentResortController.add(resortInfo.fileName);
-                      // if (resortInfo.isLoaded) {
-                      //   widget.currentResortController.add(resortInfo.fileName);
-                      // }
+                      if (resortsInfo[i].isLoaded) {
+                        Navigator.pop(context);
+                        widget.currentResortController.add(resortsInfo[i].fileName);
+                      } else {
+                        if (!resortsInfo[i].isLoading) {
+                          resortsInfo[i].isLoading = true;
+                          ResortsStorage.downloadResort('resorts_' + resortsInfo[i].fileName);
+                          setState(() {});
+                        }
+                      }
                     },
                     trailing: ClipOval(
                       child: Container(
@@ -52,9 +62,11 @@ class _SideBarState extends State<SideBar> {
                         width: 20,
                         height: 20,
                         child: Center(
-                          child: (!resortInfo.isLoaded)
-                              ? const Icon(Icons.arrow_downward)
-                              : ((resortInfo.isLastVersion) ? const Icon(Icons.wifi_protected_setup) : (Container())),
+                          child: resortsInfo[i].isLoading
+                              ? const SizedBox(width: 30, height: 30, child: CircularProgressIndicator())
+                              : (!resortsInfo[i].isLoaded)
+                                  ? const Icon(Icons.arrow_downward)
+                                  : (((resortsInfo[i].isLastVersion) ? const Icon(Icons.wifi_protected_setup) : (Container()))),
                         ),
                       ),
                     ),
