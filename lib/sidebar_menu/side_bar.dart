@@ -2,20 +2,25 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../osm_map/default_map.dart';
-import 'resorts_storage.dart';
+import '../files_handler/resorts_storage.dart';
 
-class SideBar extends StatelessWidget {
+class SideBar extends StatefulWidget {
   final StreamController<String> currentResortController;
 
   const SideBar({Key? key, required this.currentResortController}) : super(key: key);
 
+  @override
+  State<SideBar> createState() => _SideBarState();
+}
+
+class _SideBarState extends State<SideBar> {
   @override
   Widget build(BuildContext context) {
     return Drawer(
       child: FutureBuilder<List<DataResort>>(
           future: ResortsStorage.resortsData(),
           builder: (context, snapshot) {
+            print('snapshot: ${snapshot.data}');
             return ListView(
               children: [
                 DrawerHeader(
@@ -29,15 +34,17 @@ class SideBar extends StatelessWidget {
                     image: DecorationImage(fit: BoxFit.fill, image: NetworkImage('https://oflutter.com/wp-content/uploads/2021/02/profile-bg3.jpg')),
                   ),
                 ),
+
                 for (DataResort resortInfo in snapshot.data ?? [])
                   ListTile(
                     leading: const Icon(Icons.favorite),
                     title: Text(resortInfo.fileName),
                     onTap: () {
-                      if (resortInfo.isLoaded) {
-                        currentResortController.add(resortInfo.fileName);
-                      }
                       Navigator.pop(context);
+                      widget.currentResortController.add(resortInfo.fileName);
+                      // if (resortInfo.isLoaded) {
+                      //   widget.currentResortController.add(resortInfo.fileName);
+                      // }
                     },
                     trailing: ClipOval(
                       child: Container(
@@ -47,7 +54,7 @@ class SideBar extends StatelessWidget {
                         child: Center(
                           child: (!resortInfo.isLoaded)
                               ? const Icon(Icons.arrow_downward)
-                              : ((!resortInfo.isLastVersion) ? const Icon(Icons.wifi_protected_setup) : (Container())),
+                              : ((resortInfo.isLastVersion) ? const Icon(Icons.wifi_protected_setup) : (Container())),
                         ),
                       ),
                     ),

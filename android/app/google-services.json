@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "128339465435",
+    "project_id": "pistes-bff27",
+    "storage_bucket": "pistes-bff27.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:128339465435:android:85d7436936bb6f52a8a8fe",
+        "android_client_info": {
+          "package_name": "com.example.pistes"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "128339465435-s8q2goukgvr37v5dmv4f4o33tm01rrc0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.pistes",
+            "certificate_hash": "d5e9bd13b67a0d29f2a9bb232a42801aeb11ed04"
+          }
+        },
+        {
+          "client_id": "128339465435-bmaubqg0uqj8f3hu77bosmet0p1hnjfc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCFkTiHESR8WorElj_kpHII_TYlXZoVjFE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "128339465435-bmaubqg0uqj8f3hu77bosmet0p1hnjfc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

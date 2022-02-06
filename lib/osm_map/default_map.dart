@@ -7,7 +7,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_osm_plugin/flutter_osm_plugin.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:pistes/device_description/size_config.dart';
 import 'package:pistes/enums/marker_types.dart';
@@ -16,9 +15,10 @@ import 'package:pistes/graph/resort_graph.dart';
 import 'package:pistes/osm_map/map_field.dart';
 import 'package:pistes/osm_map/markers_handler.dart';
 import 'package:pistes/osm_map/polylines_handler.dart';
-import 'package:pistes/sidebar_menu/sideBar.dart';
+import 'package:pistes/sidebar_menu/side_bar.dart';
 
 import '../graph/resort_point.dart';
+import '../search_field/search_field.dart';
 import 'difficulty_slider.dart';
 
 class DefaultMap extends StatefulWidget {
@@ -79,6 +79,9 @@ class _DefaultMapState extends State<DefaultMap> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.blue,
+        actions: <Widget>[
+          SearchField(mapController: mapUpdateController,),
+        ],
       ),
       drawer: SideBar(
         currentResortController: currentResortController,
@@ -118,6 +121,7 @@ class _DefaultMapState extends State<DefaultMap> {
               ],
             );
           }),
+      /*
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           // buildResortGraph();
@@ -125,6 +129,8 @@ class _DefaultMapState extends State<DefaultMap> {
         child: const Text('Build'),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
+
+       */
     );
   }
 

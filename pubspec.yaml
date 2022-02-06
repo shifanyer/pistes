@@ -13,11 +13,13 @@ dependencies:
   flutter:
     sdk: flutter
 
-  flutter_osm_plugin: ^0.29.1+2
   cupertino_icons: ^1.0.4
   xml: ^5.3.1
   google_maps_flutter: ^2.1.1
   flutter_polyline_points: ^1.0.0
+  path_provider: ^2.0.8
+  firebase_core: ^1.12.0
+  firebase_storage: ^10.2.6
 
 dev_dependencies:
   flutter_test:
@@ -33,6 +35,7 @@ flutter:
     - assets/resorts.json
     - assets/resorts_redLake.json
     - assets/resorts_Sheregesh.json
+    - assets/resorts_Elbrus.json
 
     - assets/markers/tmp.png
     - assets/markers/tmp2.png
