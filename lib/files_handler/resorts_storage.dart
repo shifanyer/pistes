@@ -9,12 +9,26 @@ import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:firebase_core/firebase_core.dart' as firebase_core;
 
 class ResortsStorage {
-  static Future<Map<String, dynamic>> downloadedResorts() async {
+  static Future<Map<String, dynamic>> getResortsInfo() async {
     var assetPath = 'assets/resorts.json';
 
-    String jsonString = await rootBundle.loadString(assetPath);
-    Map<String, dynamic> data = json.decode(jsonString);
-    return data;
+    Directory appDocDir = await getApplicationDocumentsDirectory();
+
+    Map<String, dynamic> res = {};
+    File resortsInfoFile = File('${appDocDir.path}/resorts/resorts.json');
+    if (!(resortsInfoFile.existsSync())) {
+      resortsInfoFile.createSync(recursive: true);
+      String jsonString = await rootBundle.loadString(assetPath);
+      resortsInfoFile.writeAsString(jsonString);
+      res = json.decode(jsonString);
+    } else {
+      var dataString = '';
+      await resortsInfoFile.readAsString().then((String contents) {
+        dataString = contents;
+      });
+      res = json.decode(dataString);
+    }
+    return res;
   }
 
   static List<String> allResorts() {
@@ -25,13 +39,13 @@ class ResortsStorage {
     return res;
   }
 
-  static Future<List<DataResort>> resortsData() async {
+  static Future<List<DataResort>> resortsDataList() async {
     var res = <DataResort>[];
-    var deviceResorts = (await downloadedResorts())['resorts'].values;
+    var deviceResorts = (await getResortsInfo())['resorts'].values;
 
     for (var resort in deviceResorts) {
       res.add(DataResort(resort['name'], LatLng(double.parse(resort['point']['lat']), double.parse(resort['point']['lon'])), resort['isLoaded'],
-          resort['needUpdate']));
+          resort['isLastVersion']));
     }
     return res;
   }
@@ -46,21 +60,40 @@ class ResortsStorage {
     try {
       downloadToFile.create(recursive: true);
     } catch (e) {
-      print('IOFileError: ${e}');
+      print('IOFileError: $e');
     }
     try {
       await resortStorageRef.writeToFile(downloadToFile);
     } on firebase_core.FirebaseException catch (e) {
-      print('FirebaseException: ${e}');
+      print('FirebaseException: $e');
     }
   }
 
-  // static updateResortsFile(Map<String, dynamic> newData) async {
-  //   var stringData = json.encode(newData);
-  //   var assetPath = 'assets/resorts.json';
-  //
-  //   String jsonString = await rootBundle.;
-  // }
+  static void updateResortsFile(List<DataResort> newData) async {
+    var stringData = resortsDataListToString(newData);
+    Directory appDocDir = await getApplicationDocumentsDirectory();
+    File resortsInfoFile = File('${appDocDir.path}/resorts/resorts.json');
+    if (!(resortsInfoFile.existsSync())) {
+      resortsInfoFile.createSync(recursive: true);
+    }
+    resortsInfoFile.writeAsString(stringData);
+  }
+
+  static String resortsDataListToString(List<DataResort> resortsInfoList) {
+    var res = '''{
+    "resorts": {
+    
+    ''';
+    for (var i = 0; i < resortsInfoList.length; i++) {
+      res += resortsInfoList[i].toString();
+      if (i != resortsInfoList.length - 1) {
+        res += ',';
+      }
+      res += '\n';
+    }
+    res += '}}';
+    return res;
+  }
 }
 
 class DataResort {
@@ -74,6 +107,17 @@ class DataResort {
 
   @override
   String toString() {
-    return '{fileName: ${this.fileName}, isLoaded: ${this.isLoaded}, isLoading: ${this.isLoading}, isLastVersion: ${this.isLastVersion}';
+    return '''
+    "$fileName" :
+    {
+      "name": "$fileName",
+      "point" : {
+        "lat": "${point.latitude}",
+        "lon": "${point.longitude}"
+      } ,
+      "isLoaded": $isLoaded, 
+      "isLoading": $isLoading, 
+      "isLastVersion": $isLastVersion
+    }''';
   }
 }

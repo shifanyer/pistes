@@ -57,24 +57,7 @@ class CustomSearchDelegate extends SearchDelegate {
 
   @override
   Widget buildResults(BuildContext context) {
-    /*
-    if (query.length < 3) {
-      return Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          Center(
-            child: Text(
-              "Search term must be longer than two letters.",
-            ),
-          )
-        ],
-      );
-    }
-
-     */
-
     var res = ResortsStorage.allResorts().where((element) => element.contains(query)).toList();
-    print('res: ${res}');
 
     return Builder(
       builder: (context) {
@@ -115,7 +98,7 @@ class CustomSearchDelegate extends SearchDelegate {
     // This method is called everytime the search term changes.
     // If you want to add search suggestions as the user enters their search term, this is the place to do that.
     return FutureBuilder<List<DataResort>>(
-        future: ResortsStorage.resortsData(),
+        future: ResortsStorage.resortsDataList(),
         builder: (context, resortsSnapshot) {
           var res = (resortsSnapshot.data ?? []).where((element) => element.fileName.contains(query)).toList();
           return ListView.builder(

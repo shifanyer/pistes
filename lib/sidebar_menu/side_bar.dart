@@ -14,16 +14,14 @@ class SideBar extends StatefulWidget {
 }
 
 class _SideBarState extends State<SideBar> {
-  var resortsInfo = [];
+  var resortsInfo = <DataResort>[];
 
   @override
   Widget build(BuildContext context) {
     return Drawer(
       child: FutureBuilder<List<DataResort>>(
-          future: ResortsStorage.resortsData(),
+          future: ResortsStorage.resortsDataList(),
           builder: (context, snapshot) {
-            print('snapshot: ${snapshot.data}');
-            print('resortsInfo: ${resortsInfo}');
             if (resortsInfo.isEmpty) {
               resortsInfo = snapshot.data ?? [];
             }
@@ -51,8 +49,14 @@ class _SideBarState extends State<SideBar> {
                       } else {
                         if (!resortsInfo[i].isLoading) {
                           resortsInfo[i].isLoading = true;
-                          ResortsStorage.downloadResort('resorts_' + resortsInfo[i].fileName);
+                          ResortsStorage.updateResortsFile(resortsInfo);
                           setState(() {});
+                          ResortsStorage.downloadResort('resorts_' + resortsInfo[i].fileName).then((value) {
+                            resortsInfo[i].isLoading = false;
+                            resortsInfo[i].isLoaded = true;
+                            ResortsStorage.updateResortsFile(resortsInfo);
+                            setState(() {});
+                          });
                         }
                       }
                     },

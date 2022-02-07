@@ -6,8 +6,8 @@
         "lat": "60.5395387",
         "lon": "29.745112"
       },
-      "isLoaded": true,
-      "needUpdate": false
+      "isLoaded": false,
+      "isLastVersion": false
     },
     "Sheregesh": {
       "name": "Sheregesh",
@@ -15,8 +15,8 @@
         "lat": "52.9533661",
         "lon": "87.9320247"
       },
-      "isLoaded": true,
-      "needUpdate": false
+      "isLoaded": false,
+      "isLastVersion": false
     },
     "Elbrus": {
       "name": "Elbrus",
@@ -25,7 +25,7 @@
         "lon": "42.4605844"
       },
       "isLoaded": false,
-      "needUpdate": false
+      "isLastVersion": false
     }
   }
 }
